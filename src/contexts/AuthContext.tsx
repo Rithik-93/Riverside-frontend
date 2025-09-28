@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void
   logout: () => void
   refreshToken: () => Promise<boolean>
+  oauthLogin: (provider: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -152,6 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return success
   }
 
+  const oauthLogin = async (provider: string): Promise<void> => {
+    window.location.href = `http://localhost:8081/auth/${provider}`
+  }
+
   const value: AuthContextType = {
     user,
     token,
@@ -159,7 +164,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
-    refreshToken
+    refreshToken,
+    oauthLogin
   }
 
   return (

@@ -26,6 +26,17 @@ interface RegisterRequest {
   password: string
 }
 
+interface OAuthSession {
+  provider: string
+  code: string
+  state: string
+}
+
+interface OAuthURLResponse {
+  auth_url: string
+  state: string
+}
+
 import { httpClient } from './httpClient'
 
 interface ApiResponse<T> {
@@ -117,7 +128,32 @@ class AuthService {
       return false
     }
   }
+
+  async getOAuthURL(provider: string): Promise<OAuthURLResponse> {
+    const response = await this.makeRequest<OAuthURLResponse>(`/auth/${provider}`, {
+      method: 'GET',
+    })
+    
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to get OAuth URL')
+    }
+    
+    return response.data
+  }
+
+  async oauthLogin(oauthData: OAuthSession): Promise<AuthResponse> {
+    const response = await this.makeRequest<AuthResponse>('/auth/oauth', {
+      method: 'POST',
+      body: JSON.stringify(oauthData),
+    })
+    
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'OAuth login failed')
+    }
+    
+    return response.data
+  }
 }
 
 export const authService = new AuthService()
-export type { User, AuthResponse, LoginRequest, RegisterRequest }
+export type { User, AuthResponse, LoginRequest, RegisterRequest, OAuthSession, OAuthURLResponse }

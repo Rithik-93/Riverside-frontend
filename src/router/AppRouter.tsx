@@ -2,8 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
+import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import SignupPage from '../pages/SignupPage';
+import OAuthCallbackPage from '../pages/OAuthCallbackPage';
 import DashboardHomePage from '../pages/DashboardHomePage';
 import StudioPreCheckPage from '../pages/StudioPreCheckPage';
 import StudioPage from '../pages/StudioPage';
@@ -36,6 +38,10 @@ const AppRouter: React.FC = () => {
             path="/signup" 
             element={!user ? <SignupPage /> : <Navigate to="/dashboard/home" replace />} 
           />
+          <Route 
+            path="/auth/google/callback" 
+            element={<OAuthCallbackPage />} 
+          />
           
           <Route 
             path="/dashboard/home" 
@@ -59,7 +65,7 @@ const AppRouter: React.FC = () => {
           
           <Route 
             path="/" 
-            element={<Navigate to={user ? "/dashboard/home" : "/login"} replace />} 
+            element={user ? <Navigate to="/dashboard/home" replace /> : <LandingPage />} 
           />
           
           <Route 
