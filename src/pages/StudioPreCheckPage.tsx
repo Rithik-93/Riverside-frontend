@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const StudioPreCheckPage: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [accessGranted, setAccessGranted] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -16,13 +18,16 @@ const StudioPreCheckPage: React.FC = () => {
       });
       setLocalStream(stream);
       setAccessGranted(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
     } catch (error) {
       console.error('Failed to access camera and microphone:', error);
     }
   };
+
+  useEffect(() => {
+    if (localStream && videoRef.current) {
+      videoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
 
   const joinStudio = () => {
     navigate(`/studio/${username}/${uuid}/join`);
@@ -35,7 +40,7 @@ const StudioPreCheckPage: React.FC = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Studio - {username}
+                Studio - {user?.full_name || user?.username || username}
               </h1>
               <p className="text-gray-600">Studio ID: {uuid}</p>
             </div>
@@ -52,6 +57,9 @@ const StudioPreCheckPage: React.FC = () => {
               <h2 className="text-2xl font-semibold text-gray-800 mb-6">
                 Let's check your cam and mic
               </h2>
+              <p className="text-gray-600 mb-4">
+                Host: {user?.full_name || user?.username || username}
+              </p>
               
               <div className="text-center">
                 <button 

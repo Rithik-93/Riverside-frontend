@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
 import { 
@@ -42,6 +42,7 @@ interface Message {
 const WebRTCCall: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [isConnected, setIsConnected] = useState(false)
   const [podcastId, setPodcastId] = useState(uuid || '')
@@ -57,6 +58,7 @@ const WebRTCCall: React.FC = () => {
   const [isHost, setIsHost] = useState(false)
   const [storedHostUserId, setStoredHostUserId] = useState<string | null>(null)
   const [isProcessingRecording, setIsProcessingRecording] = useState(false)
+  const [inviteLink, setInviteLink] = useState('')
   
   const localStreamRef = useRef<MediaStream | null>(null)
   const recordingIdRef = useRef<string>('')
@@ -115,6 +117,29 @@ const WebRTCCall: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [])
+
+  useEffect(() => {
+    if (isConnected && podcastId && !isInPodcast) {
+      console.log('Auto-joining podcast:', podcastId)
+      handleJoinPodcast()
+    }
+  }, [isConnected, podcastId, isInPodcast])
+
+  useEffect(() => {
+    if (podcastId && username) {
+      const link = `${window.location.origin}/studio/${username}/${podcastId}`
+      setInviteLink(link)
+    }
+  }, [podcastId, username])
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      console.log('Invite link copied to clipboard')
+    } catch (err) {
+      console.error('Failed to copy invite link:', err)
+    }
+  }
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -368,6 +393,7 @@ const WebRTCCall: React.FC = () => {
       setIsInCall,
       pendingICECandidates
     )
+    navigate('/dashboard/home')
   }
 
   const handleInitializePeerConnection = () => {
@@ -384,14 +410,9 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleStartCall = (targetUserId: string) => {
-    console.log('📞 handleStartCall called')
-    console.log('📞 targetUserId:', targetUserId)
-    console.log('📞 current localStream:', localStream)
-    
     startCall(
       targetUserId,
       (stream) => {
-        console.log('📞 setLocalStream callback called with stream:', stream)
         localStreamRef.current = stream
         setLocalStream(stream)
       },
@@ -417,12 +438,6 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleStartRecording = async () => {
-    console.log('🎥 handleStartRecording called')
-    console.log('🎥 localStream (state):', localStream)
-    console.log('🎥 localStreamRef (ref):', localStreamRef.current)
-    console.log('🎥 isRecording:', isRecording)
-    console.log('🎥 isInCall:', isInCall)
-    
     const currentLocalStream = localStreamRef.current || localStream
     
     if (!currentLocalStream) {
@@ -432,7 +447,6 @@ const WebRTCCall: React.FC = () => {
     
     await createRecordingSession()
     
-    console.log('✅ Starting recording with local stream')
     startRecording(
       currentLocalStream,
       mediaRecorderRef,
@@ -445,10 +459,6 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleStopRecording = async () => {
-    console.log('🛑 handleStopRecording called')
-    console.log('🛑 mediaRecorderRef.current:', mediaRecorderRef.current)
-    console.log('🛑 isRecording:', isRecording)
-    
     stopRecording(
       mediaRecorderRef,
       chunkUploadIntervalRef,
@@ -460,13 +470,6 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleHostStartRecording = () => {
-    console.log('🎬 handleHostStartRecording called')
-    console.log('🎬 isHost:', isHost)
-    console.log('🎬 localStream (state):', localStream)
-    console.log('🎬 localStreamRef (ref):', localStreamRef.current)
-    console.log('🎬 isInCall:', isInCall)
-    console.log('🎬 clientId:', clientId)
-    console.log('🎬 podcastId:', podcastId, 'recordingId:', recordingId)
     
     if (!isHost) {
       console.log('❌ Only the host can control recording')
@@ -553,7 +556,9 @@ const WebRTCCall: React.FC = () => {
             <main className="app-main">
               {!isInPodcast ? (
                 <div className="room-section">
-                  <h2 className="text-xl font-semibold text-white mb-4">Join Podcast</h2>
+                  <h2 className="text-xl font-semibold text-white mb-4">
+                    {isConnected ? 'Joining Podcast...' : 'Connecting...'}
+                  </h2>
                   <div className="flex space-x-2">
                     <input
                       type="text"
@@ -571,124 +576,159 @@ const WebRTCCall: React.FC = () => {
                       Join Podcast
                     </button>
                   </div>
+                  {isConnected && (
+                    <div className="mt-4 text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+                      <p className="text-gray-300 mt-2">Auto-joining your studio...</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="call-section">
-                  <div className="podcast-info mb-6">
-                    <h2 className="text-xl font-semibold text-white">Podcast: {podcastId}</h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      {isHost && (
+                        <div className="bg-yellow-600 text-white px-4 py-2 rounded-lg inline-block">
+                          <span className="font-bold">🎙️ You are the Host</span>
+                          <span className="text-sm ml-2">- You control recording and manage the studio</span>
+                        </div>
+                      )}
+                    </div>
                     <button 
                       onClick={handleLeavePodcast} 
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-2"
+                      className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                     >
                       Leave Podcast
                     </button>
                   </div>
 
-                  <div className="users-section mb-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Users in Podcast ({remoteUsers.length + 1})</h3>
-                    <div className="space-y-2">
-                      <div className="bg-gray-700 rounded p-3">
-                        <span className="text-white">You ({clientId})</span>
-                      </div>
+                  {/* Two Video Boxes Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Your Video */}
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <h4 className="text-white mb-2">You</h4>
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full aspect-video bg-gray-600 rounded"
+                      />
+                    </div>
+                    
+                    {/* Participant Video or Invite Section */}
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <h4 className="text-white mb-2">Participants</h4>
                       {remoteUsers.length === 0 ? (
-                        <div className="bg-gray-700 rounded p-4 text-center">
-                          <p className="text-gray-300">Waiting for other users to join...</p>
-                          <p className="text-gray-400 text-sm">Share the room ID with someone to start recording!</p>
+                        <div className="h-full flex flex-col items-center justify-center text-center">
+                          <div className="mb-4">
+                            <h3 className="text-lg font-semibold text-white mb-2">Invite people</h3>
+                            <p className="text-gray-300 mb-4">Share this link to invite guests to your studio.</p>
+                          </div>
+                          
+                          <div className="w-full max-w-md">
+                            <div className="flex space-x-2 mb-4">
+                              <input
+                                type="text"
+                                value={inviteLink}
+                                readOnly
+                                className="flex-1 px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md text-sm"
+                              />
+                              <button 
+                                onClick={copyInviteLink}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"
+                              >
+                                Copy Link
+                              </button>
+                            </div>
+                            <p className="text-gray-400 text-xs">
+                              Studio ID: {podcastId}
+                            </p>
+                          </div>
                         </div>
                       ) : (
-                        remoteUsers.map(userId => (
-                          <div key={userId} className="bg-gray-700 rounded p-3 flex justify-between items-center">
-                            <span className="text-white">{userId}</span>
-                            {!isInCall && (
+                        <div className="space-y-2">
+                          <video
+                            ref={remoteVideoRef}
+                            autoPlay
+                            playsInline
+                            className="w-full aspect-video bg-gray-600 rounded"
+                          />
+                          {remoteUsers.length > 0 && !isInCall && (
+                            <div className="text-center">
                               <button 
-                                onClick={() => handleStartCall(userId)}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm"
+                                onClick={() => handleStartCall(remoteUsers[0])}
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
                               >
-                                Call
+                                Start Call
                               </button>
-                            )}
-                          </div>
-                        ))
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-
-                  <div className="video-section">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                      <div className="bg-gray-700 rounded-lg p-4">
-                        <h4 className="text-white mb-2">Local Video</h4>
-                        <video
-                          ref={localVideoRef}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="w-full aspect-video bg-gray-600 rounded"
-                        />
+                  
+                  {/* Recording Controls */}
+                  {isInCall && (
+                    <div className="call-controls bg-gray-700 rounded-lg p-4">
+                      <button 
+                        onClick={handleEndCall} 
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-4"
+                      >
+                        End Call
+                      </button>
+                      
+                      <div className="debug-info text-xs text-gray-400 mb-4">
+                        UserID: {user?.id} | Host: {isHost ? 'Yes' : 'No'} | Podcast: {podcastId}
                       </div>
-                      <div className="bg-gray-700 rounded-lg p-4">
-                        <h4 className="text-white mb-2">Remote Video</h4>
-                        <video
-                          ref={remoteVideoRef}
-                          autoPlay
-                          playsInline
-                          className="w-full aspect-video bg-gray-600 rounded"
-                        />
-                      </div>
-                    </div>
-                    
-                    {isInCall && (
-                      <div className="call-controls bg-gray-700 rounded-lg p-4">
-                        <button 
-                          onClick={handleEndCall} 
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-4"
-                        >
-                          End Call
-                        </button>
-                        
-                        <div className="debug-info text-xs text-gray-400 mb-4">
-                          UserID: {user?.id} | Host: {isHost ? 'Yes' : 'No'} | Podcast: {podcastId}
-                        </div>
-                        
-                        {isHost ? (
-                          <div className="host-controls">
-                            <div className="host-indicator text-yellow-400 mb-2">You are the host</div>
+                      
+                      {isHost ? (
+                        <div className="host-controls bg-yellow-900 bg-opacity-30 p-4 rounded-lg border border-yellow-600">
+                          <div className="host-indicator text-yellow-400 mb-3 font-bold text-lg">🎙️ You are the Host</div>
+                          <div className="mb-4">
                             <button 
                               onClick={isRecording ? handleHostStopRecording : handleHostStartRecording}
-                              className={`record-btn host-record-btn ${isRecording ? 'recording' : ''} ${!localStream ? 'disabled' : ''} bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed`}
+                              className={`record-btn host-record-btn ${isRecording ? 'recording' : ''} ${!localStream ? 'disabled' : ''} bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed`}
                               disabled={!localStream}
                             >
-                              {!localStream ? 'Start Call First' : (isRecording ? 'Stop Recording (All)' : 'Start Recording (All)')}
+                              {!localStream ? 'Start Call First' : (isRecording ? '🛑 Stop Recording (All)' : '🎬 Start Recording (All)')}
                             </button>
-                            {!localStream && (
-                              <div className="recording-hint text-gray-400 text-sm mt-2">
-                                Start a call with another user first to enable recording
-                              </div>
-                            )}
                           </div>
-                        ) : (
-                          <div className="participant-controls">
-                            <div className="participant-indicator text-blue-400 mb-2">
-                              Participant - Recording controlled by host
+                          {!localStream && (
+                            <div className="recording-hint text-yellow-200 text-sm">
+                              💡 Start a call with another user first to enable recording
                             </div>
-                            {!localStream && (
-                              <div className="participant-hint text-gray-400 text-sm">
-                                Start a call to enable recording
-                              </div>
-                            )}
-                            {isRecording && (
-                              <div className="recording-status text-red-400 text-sm">
-                                Recording in progress...
-                              </div>
-                            )}
+                          )}
+                          {localStream && !isRecording && (
+                            <div className="recording-hint text-green-200 text-sm">
+                              ✅ Ready to record! Click the button above to start recording for all participants.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="participant-controls">
+                          <div className="participant-indicator text-blue-400 mb-2">
+                            Participant - Recording controlled by host
                           </div>
-                        )}
-                        
-                        {isRecording && recordingStartTime && (
-                          <RecordingTimer startTime={recordingStartTime} />
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          {!localStream && (
+                            <div className="participant-hint text-gray-400 text-sm">
+                              Start a call to enable recording
+                            </div>
+                          )}
+                          {isRecording && (
+                            <div className="recording-status text-red-400 text-sm">
+                              Recording in progress...
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {isRecording && recordingStartTime && (
+                        <RecordingTimer startTime={recordingStartTime} />
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </main>
