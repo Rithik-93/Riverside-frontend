@@ -7,7 +7,6 @@ import LoginPage from '../pages/LoginPage';
 import SignupPage from '../pages/SignupPage';
 import OAuthCallbackPage from '../pages/OAuthCallbackPage';
 import DashboardHomePage from '../pages/DashboardHomePage';
-import StudioPreCheckPage from '../pages/StudioPreCheckPage';
 import StudioPage from '../pages/StudioPage';
 import PodcastDetailsPage from '../pages/PodcastDetailsPage';
 
@@ -50,11 +49,6 @@ const AppRouter: React.FC = () => {
           
           <Route 
             path="/studio/:username/:uuid" 
-            element={user ? <StudioPreCheckPage /> : <Navigate to="/login" replace />} 
-          />
-          
-          <Route 
-            path="/studio/:username/:uuid/join" 
             element={user ? <StudioPage /> : <Navigate to="/login" replace />} 
           />
           

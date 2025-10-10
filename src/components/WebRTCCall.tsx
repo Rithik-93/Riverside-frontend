@@ -46,7 +46,7 @@ const WebRTCCall: React.FC = () => {
   
   const [isConnected, setIsConnected] = useState(false)
   const [podcastId, setPodcastId] = useState(uuid || '')
-  const [recordingId, setRecordingId] = useState('')
+  const [ _, setRecordingId] = useState('')
   const [clientId, setClientId] = useState('')
   const [isInPodcast, setIsInPodcast] = useState(false)
   const [isInCall, setIsInCall] = useState(false)
