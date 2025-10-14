@@ -10,45 +10,53 @@ const LandingPage: React.FC = () => {
       <div className="fixed inset-0 -z-10 bg-gradient-to-br from-[#972fff]/5 via-background to-[#c58aff]/5" />
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#972fff]/10 via-transparent to-transparent" />
       
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[#c58aff]/10 bg-background/40 backdrop-blur-xl">
-        <nav aria-label="Main" className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg group"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#972fff] to-[#c58aff] rounded-lg blur-sm group-hover:blur-md transition-all" />
-              <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-[#972fff] to-[#c58aff] flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
+      {/* Header - Dynamic Island Style */}
+      <header className="sticky top-0 z-50 pt-4 pb-4">
+        <div className="mx-auto max-w-7xl px-6">
+          <nav aria-label="Main" className="relative group">
+            {/* Glow effect */}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#972fff]/30 to-[#c58aff]/30 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Main nav container */}
+            <div className="relative bg-[#0b0b0b]/20 backdrop-blur-2xl border border-[#c58aff]/20 rounded-full px-6 py-3 shadow-2xl shadow-black/50 flex items-center justify-between">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg group/logo"
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#972fff] to-[#c58aff] rounded-lg blur-sm group-hover/logo:blur-md transition-all" />
+                  <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-[#972fff] to-[#c58aff] flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <span className="text-xl font-bold bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">
+                  Lakeside
+                </span>
+              </Link>
+
+              <div className="hidden md:flex items-center gap-8 text-sm">
+                <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+                  Features
+                </a>
+                <a href="#benefits" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+                  Why Choose Us
+                </a>
+                <a href="#cta" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+                  Get Started
+                </a>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" asChild className="hover:bg-[#972fff]/10 rounded-full">
+                  <Link to="/login">Sign in</Link>
+                </Button>
+                <Button asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-lg shadow-[#972fff]/25 rounded-full">
+                  <Link to="/signup">Start Free</Link>
+                </Button>
               </div>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">
-              Lakeside
-            </span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-10 text-sm">
-            <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
-              Features
-            </a>
-            <a href="#benefits" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
-              Why Choose Us
-            </a>
-            <a href="#cta" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
-              Get Started
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild className="hover:bg-[#972fff]/10">
-              <Link to="/login">Sign in</Link>
-            </Button>
-            <Button asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-lg shadow-[#972fff]/25">
-              <Link to="/signup">Start Free</Link>
-            </Button>
-          </div>
-        </nav>
+          </nav>
+        </div>
       </header>
 
       {/* Hero Section */}
