@@ -122,23 +122,32 @@ export const startCall = async (
     setLocalStream: (value: MediaStream | null) => void,
     initializePeerConnection: () => RTCPeerConnection,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
-    wsRef: React.RefObject<WebSocket | null>
+    wsRef: React.RefObject<WebSocket | null>,
+    existingStream?: MediaStream | null
   ) => {
     console.log('📞 startCall function called')
     console.log('📞 targetUserId:', targetUserId)
+    console.log('📞 existingStream:', existingStream)
     
     try {
-      console.log('📞 Requesting user media...')
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      })
+      let stream: MediaStream
       
-      console.log('📞 Got user media stream:', stream)
+      if (existingStream) {
+        console.log('📞 Using existing stream')
+        stream = existingStream
+      } else {
+        console.log('📞 Requesting user media...')
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        })
+        
+        console.log('📞 Got user media stream:', stream)
+        setLocalStream(stream)
+        console.log('📞 setLocalStream called with stream')
+      }
+      
       console.log('📞 Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })))
-      
-      setLocalStream(stream)
-      console.log('📞 setLocalStream called with stream')
       
       const pc = initializePeerConnection()
       
@@ -167,15 +176,24 @@ export const handleOffer = async (
     initializePeerConnection: () => RTCPeerConnection,
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
-    wsRef: React.RefObject<WebSocket | null>
+    wsRef: React.RefObject<WebSocket | null>,
+    existingStream?: MediaStream | null
   ) => {
+    console.log('📩 handleOffer called, existingStream:', existingStream)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      })
+      let stream: MediaStream
       
-      setLocalStream(stream)
+      if (existingStream) {
+        console.log('📩 Using existing stream for answer')
+        stream = existingStream
+      } else {
+        console.log('📩 Requesting new stream for answer')
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        })
+        setLocalStream(stream)
+      }
       
       const pc = initializePeerConnection()
       
@@ -393,7 +411,8 @@ export const stopRecording = (
     mediaRecorderRef: React.RefObject<MediaRecorder | null>,
     chunkUploadIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>,
     setIsRecording: (value: boolean) => void,
-    setRecordingStartTime: (value: Date | null) => void
+    setRecordingStartTime: (value: Date | null) => void,
+    chunkCounterRef?: React.MutableRefObject<number>
   ) => {
     console.log('🛑 stopRecording function called')
     console.log('🛑 mediaRecorderRef.current:', mediaRecorderRef.current)
@@ -413,6 +432,12 @@ export const stopRecording = (
       chunkUploadIntervalRef.current = null
     } else {
       console.log('🛑 No upload interval to clear')
+    }
+    
+    // Reset chunk counter for next recording
+    if (chunkCounterRef) {
+      console.log('🛑 Resetting chunk counter from', chunkCounterRef.current, 'to 0')
+      chunkCounterRef.current = 0
     }
     
     console.log('🛑 Setting isRecording to false')

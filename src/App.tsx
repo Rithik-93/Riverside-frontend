@@ -4,9 +4,11 @@ import AppRouter from './router/AppRouter'
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRouter />
-    </AuthProvider>
+    <div className="dark">
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </div>
   )
 }
 

@@ -62,6 +62,7 @@ const WebRTCCall: React.FC = () => {
   
   const localStreamRef = useRef<MediaStream | null>(null)
   const recordingIdRef = useRef<string>('')
+  const callInitiatedRef = useRef<boolean>(false) // Track if we've already initiated a call
   
   const wsRef = useRef<WebSocket | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -124,6 +125,45 @@ const WebRTCCall: React.FC = () => {
       handleJoinPodcast()
     }
   }, [isConnected, podcastId, isInPodcast])
+
+  useEffect(() => {
+    const startLocalMedia = async () => {
+      if (isInPodcast && !localStream && !localStreamRef.current) {
+        try {
+          console.log('📹 Auto-starting local media stream...')
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          })
+          console.log('📹 Got local media stream:', stream)
+          localStreamRef.current = stream
+          setLocalStream(stream)
+        } catch (error) {
+          console.error('❌ Failed to get local media:', error)
+        }
+      }
+    }
+    
+    startLocalMedia()
+  }, [isInPodcast])
+
+  useEffect(() => {
+    if (isInPodcast && !isInCall && remoteUsers.length > 0 && localStream && clientId && !peerConnectionRef.current && !callInitiatedRef.current) {
+      const shouldInitiate = clientId > remoteUsers[0]
+      
+      if (shouldInitiate) {
+        console.log('📞 Auto-starting call with remote user:', remoteUsers[0])
+        callInitiatedRef.current = true
+        setTimeout(() => {
+          if (!peerConnectionRef.current) {
+            handleStartCall(remoteUsers[0])
+          }
+        }, 500)
+      } else {
+        console.log('📞 Waiting for remote user to initiate call')
+      }
+    }
+  }, [isInPodcast, isInCall, remoteUsers.length, localStream && localStream.id, clientId])
 
   useEffect(() => {
     if (podcastId && username) {
@@ -204,6 +244,13 @@ const WebRTCCall: React.FC = () => {
         if (message.payload.hostUserId) {
           setStoredHostUserId(message.payload.hostUserId)
         }
+        
+        // If recording is already in progress when joining, set the recording ID
+        if (message.payload.isRecording && message.payload.recordingId) {
+          console.log('📡 Recording already in progress, setting recording ID:', message.payload.recordingId)
+          setRecordingId(message.payload.recordingId)
+          recordingIdRef.current = message.payload.recordingId
+        }
         break
 
       case 'user-joined':
@@ -221,18 +268,35 @@ const WebRTCCall: React.FC = () => {
           setStoredHostUserId(message.payload.hostUserId)
         }
         if (isInCall && message.from) {
-          handleEndCall()
+          // Clean up peer connection and remote stream, but keep local stream
+          console.log('Participant left, cleaning up peer connection')
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close()
+            peerConnectionRef.current = null
+          }
+          setRemoteStream(null)
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = null
+          }
+          setIsInCall(false)
+          callInitiatedRef.current = false // Reset so we can initiate again if they rejoin
+          pendingICECandidates.current = []
         }
         break
 
       case 'offer':
+        const currentStream = localStreamRef.current || localStream
         await handleOffer(
           message,
-          setLocalStream,
+          (stream) => {
+            localStreamRef.current = stream
+            setLocalStream(stream)
+          },
           handleInitializePeerConnection,
           pendingICECandidates,
           sendMessage,
-          wsRef
+          wsRef,
+          currentStream // Pass existing stream
         )
         break
 
@@ -254,6 +318,11 @@ const WebRTCCall: React.FC = () => {
         console.log('📡 isInCall:', isInCall)
         
         if (message.payload?.recordingId) {
+          // Check if we already have this recording ID
+          if (recordingIdRef.current === message.payload.recordingId) {
+            console.log('ℹ️ Already have this recording ID, ignoring duplicate message')
+            break
+          }
           setRecordingId(message.payload.recordingId)
           recordingIdRef.current = message.payload.recordingId
           console.log('🎬 Set recording ID:', message.payload.recordingId)
@@ -291,6 +360,9 @@ const WebRTCCall: React.FC = () => {
         
         console.log('✅ Participant stopping recording automatically')
         handleStopRecording()
+        // Clear recording ID after stopping
+        setRecordingId('')
+        recordingIdRef.current = ''
         break
     }
   }
@@ -316,6 +388,12 @@ const WebRTCCall: React.FC = () => {
   const uploadChunk = async (chunks: Blob[], isFinal: boolean) => {
     console.log('uploadChunk called with', chunks.length, 'chunks, isFinal:', isFinal)
     if (chunks.length === 0) return
+
+    // Don't upload if we don't have a valid recording ID
+    if (!recordingIdRef.current) {
+      console.log('⚠️ No recording ID available, skipping upload')
+      return
+    }
 
     try {
       const blob = new Blob(chunks, { type: 'video/webm' })
@@ -377,6 +455,14 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleLeavePodcast = () => {
+    // Clear recording state when leaving
+    if (isRecording) {
+      handleStopRecording()
+    }
+    setRecordingId('')
+    recordingIdRef.current = ''
+    callInitiatedRef.current = false // Reset call initiation flag
+    
     leavePodcast(
       wsRef,
       setIsInPodcast,
@@ -410,6 +496,7 @@ const WebRTCCall: React.FC = () => {
   }
 
   const handleStartCall = (targetUserId: string) => {
+    const currentStream = localStreamRef.current || localStream
     startCall(
       targetUserId,
       (stream) => {
@@ -418,11 +505,13 @@ const WebRTCCall: React.FC = () => {
       },
       handleInitializePeerConnection,
       sendMessage,
-      wsRef
+      wsRef,
+      currentStream // Pass existing stream
     )
   }
 
   const handleEndCall = () => {
+    callInitiatedRef.current = false // Reset call initiation flag
     endCall(
       isRecording,
       handleStopRecording,
@@ -463,7 +552,8 @@ const WebRTCCall: React.FC = () => {
       mediaRecorderRef,
       chunkUploadIntervalRef,
       setIsRecording,
-      setRecordingStartTime
+      setRecordingStartTime,
+      chunkCounterRef
     )
     
     await finalizeRecordingSession()
@@ -532,6 +622,10 @@ const WebRTCCall: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef)
+    
+    // Clear recording ID after stopping
+    setRecordingId('')
+    recordingIdRef.current = ''
     
     setTimeout(() => setIsProcessingRecording(false), 1000)
   }

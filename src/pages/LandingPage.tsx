@@ -1,181 +1,250 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Play, Mic, Edit3, Zap, CheckCircle } from 'lucide-react';
+import { Mic, Wand2, Zap, Check, Sparkles, Video, Users } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="relative z-10 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
-              <Mic className="w-5 h-5 text-white" />
+    <main className="bg-background text-foreground min-h-screen">
+      {/* Gradient Background */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-[#972fff]/5 via-background to-[#c58aff]/5" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#972fff]/10 via-transparent to-transparent" />
+      
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-[#c58aff]/10 bg-background/40 backdrop-blur-xl">
+        <nav aria-label="Main" className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg group"
+          >
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#972fff] to-[#c58aff] rounded-lg blur-sm group-hover:blur-md transition-all" />
+              <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-[#972fff] to-[#c58aff] flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
             </div>
-            <span className="text-2xl font-bold text-white">Lakeside</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link to="/login">
-              <Button variant="ghost" className="text-white hover:text-purple-300">
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0">
-                Get Started
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+            <span className="text-xl font-bold bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">
+              Lakeside
+            </span>
+          </Link>
 
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10"></div>
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)`,
-            backgroundSize: '20px 20px'
-          }}></div>
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-6 py-20 sm:py-32">
-          <div className="text-center">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight">
-              Create your
-              <span className="block bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                best content yet.
+          <div className="hidden md:flex items-center gap-10 text-sm">
+            <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+              Features
+            </a>
+            <a href="#benefits" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+              Why Choose Us
+            </a>
+            <a href="#cta" className="text-foreground/70 hover:text-foreground transition-colors font-medium">
+              Get Started
+            </a>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" asChild className="hover:bg-[#972fff]/10">
+              <Link to="/login">Sign in</Link>
+            </Button>
+            <Button asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-lg shadow-[#972fff]/25">
+              <Link to="/signup">Start Free</Link>
+            </Button>
+          </div>
+        </nav>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative scroll-mt-24 overflow-hidden" id="hero">
+        <div className="mx-auto max-w-7xl px-6 pt-20 pb-32 md:pt-32 md:pb-40">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#c58aff]/20 bg-[#972fff]/5 mb-8 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 text-[#c58aff]" />
+              <span className="text-sm text-[#ebd7ff]">Professional Podcast Studio</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-balance mb-6">
+              <span className="bg-gradient-to-r from-white via-[#ebd7ff] to-[#c58aff] bg-clip-text text-transparent">
+                Create Content
               </span>
+              <br />
+              <span className="text-foreground">That Captivates</span>
             </h1>
             
-            <p className="text-xl sm:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Your all-in-one studio to record in high quality, edit in a flash, and go live with a bang. 
-              <span className="text-purple-300 font-semibold"> All with AI that works with you.</span>
+            <p className="mt-6 text-lg md:text-xl text-foreground/70 text-balance max-w-3xl mx-auto leading-relaxed">
+              Studio-quality recording, AI-powered editing, and seamless collaboration.
+              <br className="hidden sm:block" />
+              Everything you need to create professional podcasts.
             </p>
             
-            {/* CTA Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-              <Link to="/signup">
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg px-8 py-6 h-auto font-semibold shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 transform hover:scale-105"
-                >
-                  <Play className="w-5 h-5 mr-2" />
-                  Start Free
-                </Button>
-              </Link>
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button size="lg" asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-2xl shadow-[#972fff]/30 text-base px-8 py-6 h-auto">
+                <Link to="/signup">Start Creating Free</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="border-[#c58aff]/30 hover:bg-[#972fff]/10 text-base px-8 py-6 h-auto backdrop-blur-sm">
+                <Link to="/login">Watch Demo</Link>
+              </Button>
             </div>
             
-            {/* Free Plan Notice */}
-            <p className="text-gray-400 text-sm">
-              * No credit card needed. Free plan available.
-            </p>
+            <p className="mt-6 text-sm text-foreground/50">No credit card required • Free forever plan</p>
           </div>
         </div>
-      </div>
+
+        {/* Floating Cards Animation */}
+        <div className="absolute top-1/4 left-10 hidden lg:block">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#972fff]/20 to-[#c58aff]/20 backdrop-blur-xl border border-[#c58aff]/20 animate-float" />
+        </div>
+        <div className="absolute bottom-1/4 right-10 hidden lg:block">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#c58aff]/20 to-[#ebd7ff]/20 backdrop-blur-xl border border-[#c58aff]/20 animate-float animation-delay-2000" />
+        </div>
+      </section>
 
       {/* Features Section */}
-      <div className="relative py-20 bg-black/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Mic className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-4">High-Quality Recording</h3>
-              <p className="text-gray-400">Professional-grade audio recording with crystal clear quality and noise reduction.</p>
-            </div>
+      <section className="py-20 md:py-32 scroll-mt-24 relative" id="features">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">
+                Everything You Need
+              </span>
+            </h2>
+            <p className="text-foreground/60 text-lg">Professional tools for professional creators</p>
+          </div>
 
-            {/* Feature 2 */}
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Edit3 className="w-8 h-8 text-white" />
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                icon: Video,
+                title: "4K Studio Quality",
+                desc: "Crystal-clear 4K video and studio-grade audio with automatic local backups. Your content, protected.",
+                gradient: "from-[#972fff]/10 to-[#972fff]/5"
+              },
+              {
+                icon: Wand2,
+                title: "AI Magic Editing",
+                desc: "Remove filler words, generate transcripts, and create highlights automatically with AI.",
+                gradient: "from-[#c58aff]/10 to-[#c58aff]/5"
+              },
+              {
+                icon: Users,
+                title: "Real-time Collaboration",
+                desc: "Invite guests, co-host sessions, and stream to multiple platforms simultaneously.",
+                gradient: "from-[#ebd7ff]/10 to-[#ebd7ff]/5"
+              },
+            ].map(({ icon: Icon, title, desc, gradient }) => (
+              <div 
+                key={title} 
+                className="group relative overflow-hidden rounded-2xl border border-[#c58aff]/20 bg-gradient-to-br from-background/80 to-background/40 backdrop-blur-xl hover:border-[#c58aff]/40 transition-all duration-500 hover:shadow-2xl hover:shadow-[#972fff]/10"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                <div className="relative p-8">
+                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#972fff] to-[#c58aff] shadow-lg shadow-[#972fff]/25 mb-6">
+                    <Icon className="h-7 w-7 text-white" aria-hidden />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-foreground">{title}</h3>
+                  <p className="text-foreground/60 leading-relaxed">{desc}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-4">AI-Powered Editing</h3>
-              <p className="text-gray-400">Edit your content in a flash with intelligent AI that understands your style.</p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Zap className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-4">Go Live Instantly</h3>
-              <p className="text-gray-400">Stream your content live with professional broadcasting tools and real-time collaboration.</p>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Benefits Section */}
-      <div className="py-20">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold text-white mb-12">
-            Why choose Lakeside?
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-            <div className="flex items-start space-x-4">
-              <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">No Learning Curve</h3>
-                <p className="text-gray-400">Intuitive interface designed for creators of all skill levels.</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">AI That Understands You</h3>
-                <p className="text-gray-400">Smart AI that learns your preferences and enhances your workflow.</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Professional Quality</h3>
-                <p className="text-gray-400">Broadcast-quality output that rivals professional studios.</p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Real-time Collaboration</h3>
-                <p className="text-gray-400">Work together with your team in real-time, no matter where you are.</p>
-              </div>
+      <section className="py-20 md:py-32 scroll-mt-24 bg-gradient-to-b from-[#972fff]/5 to-transparent" id="benefits">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-bold text-center mb-12">
+              Why Creators Love <span className="bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">Lakeside</span>
+            </h2>
+            
+            <div className="grid gap-4">
+              {[
+                { title: "Zero Learning Curve", desc: "Start recording in seconds, not hours" },
+                { title: "AI-Powered Intelligence", desc: "Smart editing that understands your content" },
+                { title: "Broadcast Quality", desc: "Professional results every single time" },
+                { title: "Collaborate Seamlessly", desc: "Invite guests and co-hosts with ease" }
+              ].map(({ title, desc }) => (
+                <div 
+                  key={title} 
+                  className="flex items-start gap-4 p-6 rounded-xl border border-[#c58aff]/10 bg-background/50 backdrop-blur-sm hover:border-[#c58aff]/30 hover:bg-[#972fff]/5 transition-all duration-300"
+                >
+                  <div className="mt-1 flex-shrink-0 h-6 w-6 rounded-full bg-gradient-to-br from-[#972fff] to-[#c58aff] flex items-center justify-center shadow-lg shadow-[#972fff]/20">
+                    <Check className="h-4 w-4 text-white" aria-hidden />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">{title}</h3>
+                    <p className="text-foreground/60">{desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Final CTA Section */}
-      <div className="py-20 bg-gradient-to-r from-purple-600/20 to-pink-600/20 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to create amazing content?
+      <section className="py-20 md:py-32 scroll-mt-24 relative overflow-hidden" id="cta">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#972fff]/10 via-[#c58aff]/10 to-transparent" />
+        <div className="mx-auto max-w-4xl px-6 text-center relative">
+          <h2 className="text-4xl md:text-6xl font-bold text-balance mb-6">
+            Ready to Create Something <span className="bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">Amazing?</span>
           </h2>
-          <p className="text-xl text-gray-300 mb-8">
-            Join thousands of creators who trust Lakeside for their content creation needs.
-          </p>
-          <Link to="/signup">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg px-8 py-6 h-auto font-semibold shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 transform hover:scale-105"
-            >
-              Start Creating Today
+          <p className="text-xl text-foreground/70 mb-10">Join thousands of creators producing studio-quality content</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-2xl shadow-[#972fff]/30 text-base px-8 py-6 h-auto">
+              <Link to="/signup">Start Creating Free</Link>
             </Button>
-          </Link>
+            <Button size="lg" variant="outline" className="border-[#c58aff]/30 hover:bg-[#972fff]/10 text-base px-8 py-6 h-auto backdrop-blur-sm" asChild>
+              <a href="#features">Explore Features</a>
+            </Button>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-gray-400">
-            © 2024 Lakeside. All rights reserved.
-          </p>
+      <footer className="border-t border-[#c58aff]/10 bg-background/50 backdrop-blur-xl mt-20">
+        <div className="mx-auto max-w-7xl px-6 py-12 grid gap-10 md:grid-cols-3">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#972fff] to-[#c58aff] flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-bold text-lg">Lakeside</span>
+            </div>
+            <p className="text-sm text-foreground/60 leading-relaxed max-w-sm">
+              Professional podcast studio powered by AI. Create, edit, and broadcast stunning content with ease.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-8 md:col-span-2">
+            <div>
+              <p className="text-sm font-semibold mb-4 text-[#c58aff]">Product</p>
+              <ul className="space-y-3 text-sm">
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">Features</Link></li>
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">Pricing</Link></li>
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">Updates</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-4 text-[#c58aff]">Company</p>
+              <ul className="space-y-3 text-sm">
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">About</Link></li>
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">Careers</Link></li>
+                <li><Link to="#" className="text-foreground/60 hover:text-foreground transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div className="border-t border-[#c58aff]/10">
+          <div className="mx-auto max-w-7xl px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-foreground/50">
+            <span>© {new Date().getFullYear()} Lakeside. All rights reserved.</span>
+            <div className="flex items-center gap-6">
+              <Link to="#" className="hover:text-foreground transition-colors">Terms</Link>
+              <Link to="#" className="hover:text-foreground transition-colors">Privacy</Link>
+            </div>
+          </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 };
 
