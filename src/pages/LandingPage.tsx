@@ -1,14 +1,27 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Mic, Wand2, Zap, Check, Sparkles, Video, Users } from 'lucide-react';
+import { Wand2, Check, Sparkles, Video, Users } from 'lucide-react';
+import bgVideo from '../assets/bg_vid.mp4';
 
 const LandingPage: React.FC = () => {
   return (
-    <main className="bg-background text-foreground min-h-screen">
-      {/* Gradient Background */}
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-[#972fff]/5 via-background to-[#c58aff]/5" />
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#972fff]/10 via-transparent to-transparent" />
+    <>
+      {/* Video Background */}
+      <div className="fixed inset-0 z-0 bg-black">
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          className="w-full h-full object-cover"
+          src={bgVideo}
+        />
+        <div className="absolute inset-0 bg-black/75" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#972fff]/20 via-transparent to-[#c58aff]/20" />
+      </div>
+
+      <main className="relative z-10 text-foreground min-h-screen">
       
       {/* Header - Dynamic Island Style */}
       <header className="sticky top-0 z-50 pt-4 pb-4">
@@ -253,6 +266,7 @@ const LandingPage: React.FC = () => {
         </div>
       </footer>
     </main>
+    </>
   );
 };
 
