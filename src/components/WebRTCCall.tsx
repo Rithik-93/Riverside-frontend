@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { config } from '../config/env'
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
@@ -202,7 +203,7 @@ const WebRTCCall: React.FC = () => {
   }, [user?.id, storedHostUserId])
 
   const connectWebSocket = () => {
-    const ws = new WebSocket('ws://localhost:8080/ws')
+    const ws = new WebSocket(`${config.wsUrl}`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -426,7 +427,7 @@ const WebRTCCall: React.FC = () => {
         pre_signed_url: string;
         s3_key: string;
         chunk_index: number;
-      }>('http://localhost:8082/api/v1/upload/presigned-url', requestData)
+      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
       console.log('Got presigned URL:', presignedData.s3_key, 'Chunk index:', presignedData.chunk_index)
 
       const uploadResponse = await fetch(presignedData.pre_signed_url, {

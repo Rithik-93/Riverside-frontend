@@ -44,7 +44,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const response = await fetch('http://localhost:8081/auth/validate', {
+        const { config } = await import('../config/env')
+        const response = await fetch(`${config.apiBaseUrl}/auth/validate`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -88,7 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshAccessToken = async (): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:8081/auth/refresh', {
+      const { config } = await import('../config/env')
+      const response = await fetch(`${config.apiBaseUrl}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -131,7 +133,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8081/auth/logout', {
+      const { config } = await import('../config/env')
+      await fetch(`${config.apiBaseUrl}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -154,7 +157,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const oauthLogin = async (provider: string): Promise<void> => {
-    window.location.href = `http://localhost:8081/auth/${provider}`
+    const { config } = await import('../config/env')
+    window.location.href = `${config.apiBaseUrl}/auth/${provider}`
   }
 
   const value: AuthContextType = {

@@ -79,7 +79,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
             password: formData.password
           }
 
-      const response = await fetch(`http://localhost:8081${endpoint}`, {
+      const { config } = await import('../config/env')
+      const response = await fetch(`${config.apiBaseUrl}${endpoint}`, {
         method: 'POST',
         credentials: 'include',
         headers: {

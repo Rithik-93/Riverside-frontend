@@ -26,7 +26,8 @@ const OAuthCallbackPage: React.FC = () => {
 
         localStorage.removeItem('oauth_state')
 
-        const response = await fetch('http://localhost:8081/auth/oauth', {
+        const { config } = await import('../config/env')
+        const response = await fetch(`${config.apiBaseUrl}/auth/oauth`, {
           method: 'POST',
           credentials: 'include',
           headers: {

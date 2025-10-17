@@ -38,6 +38,7 @@ interface OAuthURLResponse {
 }
 
 import { httpClient } from './httpClient'
+import { config } from '../config/env'
 
 interface ApiResponse<T> {
   success: boolean
@@ -47,7 +48,7 @@ interface ApiResponse<T> {
 }
 
 class AuthService {
-  private baseURL = 'http://localhost:8081'
+  private baseURL = config.apiBaseUrl
 
   private async makeRequest<T>(
     endpoint: string,

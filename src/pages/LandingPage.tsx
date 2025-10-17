@@ -74,14 +74,14 @@ const LandingPage: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative scroll-mt-24 overflow-hidden" id="hero">
-        <div className="mx-auto max-w-7xl px-6 pt-20 pb-32 md:pt-32 md:pb-40">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#c58aff]/20 bg-[#972fff]/5 mb-8 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6 pt-20 pb-40 md:pt-32 md:pb-48">
+          <div className="text-center max-w-4xl mx-auto animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#c58aff]/20 bg-[#972fff]/5 mb-8 backdrop-blur-sm animate-fade-in">
               <Sparkles className="h-4 w-4 text-[#c58aff]" />
               <span className="text-sm text-[#ebd7ff]">Professional Podcast Studio</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-balance mb-6">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-balance mb-6 animate-fade-in-up animation-delay-200">
               <span className="bg-gradient-to-r from-white via-[#ebd7ff] to-[#c58aff] bg-clip-text text-transparent">
                 Create Content
               </span>
@@ -89,22 +89,29 @@ const LandingPage: React.FC = () => {
               <span className="text-foreground">That Captivates</span>
             </h1>
             
-            <p className="mt-6 text-lg md:text-xl text-foreground/70 text-balance max-w-3xl mx-auto leading-relaxed">
+            <p className="mt-6 text-lg md:text-xl text-foreground/70 text-balance max-w-3xl mx-auto leading-relaxed animate-fade-in-up animation-delay-400">
               Studio-quality recording, AI-powered editing, and seamless collaboration.
               <br className="hidden sm:block" />
               Everything you need to create professional podcasts.
             </p>
             
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 shadow-2xl shadow-[#972fff]/30 text-base px-8 py-6 h-auto">
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up animation-delay-600">
+              <Button size="lg" asChild className="bg-gradient-to-r from-[#972fff] to-[#c58aff] hover:opacity-90 hover:scale-105 transition-all shadow-2xl shadow-[#972fff]/30 text-base px-8 py-6 h-auto">
                 <Link to="/signup">Start Creating Free</Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-[#c58aff]/30 hover:bg-[#972fff]/10 text-base px-8 py-6 h-auto backdrop-blur-sm">
+              <Button size="lg" variant="outline" className="border-[#c58aff]/30 hover:bg-[#972fff]/10 hover:scale-105 transition-all text-base px-8 py-6 h-auto backdrop-blur-sm">
                 <Link to="/login">Watch Demo</Link>
               </Button>
             </div>
             
-            <p className="mt-6 text-sm text-foreground/50">No credit card required • Free forever plan</p>
+            <p className="mt-6 text-sm text-foreground/50 animate-fade-in animation-delay-800">No credit card required • Free forever plan</p>
+          </div>
+          
+          {/* Scroll Indicator */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+            <div className="w-6 h-10 rounded-full border-2 border-[#c58aff]/30 flex items-start justify-center p-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#c58aff] animate-scroll-indicator" />
+            </div>
           </div>
         </div>
 
@@ -118,9 +125,9 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 md:py-32 scroll-mt-24 relative" id="features">
+      <section className="py-24 md:py-40 scroll-mt-24 relative" id="features">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-20 animate-fade-in-up">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">
               <span className="bg-gradient-to-r from-[#c58aff] to-[#ebd7ff] bg-clip-text text-transparent">
                 Everything You Need
@@ -129,7 +136,7 @@ const LandingPage: React.FC = () => {
             <p className="text-foreground/60 text-lg">Professional tools for professional creators</p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-3">
             {[
               {
                 icon: Video,
@@ -152,15 +159,15 @@ const LandingPage: React.FC = () => {
             ].map(({ icon: Icon, title, desc, gradient }) => (
               <div 
                 key={title} 
-                className="group relative overflow-hidden rounded-2xl border border-[#c58aff]/20 bg-gradient-to-br from-background/80 to-background/40 backdrop-blur-xl hover:border-[#c58aff]/40 transition-all duration-500 hover:shadow-2xl hover:shadow-[#972fff]/10"
+                className="group relative overflow-hidden rounded-3xl border border-[#c58aff]/20 bg-gradient-to-br from-[#0b0b0b]/90 to-[#0b0b0b]/60 backdrop-blur-2xl hover:border-[#c58aff]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-[#972fff]/20 hover:-translate-y-2 animate-fade-in-up"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                 <div className="relative p-8">
-                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#972fff] to-[#c58aff] shadow-lg shadow-[#972fff]/25 mb-6">
-                    <Icon className="h-7 w-7 text-white" aria-hidden />
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#972fff] to-[#c58aff] shadow-lg shadow-[#972fff]/30 mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Icon className="h-8 w-8 text-white" aria-hidden />
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-foreground">{title}</h3>
-                  <p className="text-foreground/60 leading-relaxed">{desc}</p>
+                  <h3 className="text-xl font-bold mb-3 text-foreground group-hover:text-[#ebd7ff] transition-colors">{title}</h3>
+                  <p className="text-foreground/60 leading-relaxed group-hover:text-foreground/80 transition-colors">{desc}</p>
                 </div>
               </div>
             ))}

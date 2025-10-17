@@ -1,5 +1,3 @@
-import { authService } from './authService'
-
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean
 }
@@ -75,7 +73,9 @@ class HttpClient {
 
   private async performTokenRefresh(): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:8081/auth/refresh', {
+      const { config } = await import('../config/env')
+      const apiBase = config.apiBaseUrl
+      const response = await fetch(`${apiBase}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
         headers: {
