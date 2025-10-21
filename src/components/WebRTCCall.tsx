@@ -64,6 +64,7 @@ const WebRTCCall: React.FC = () => {
   const localStreamRef = useRef<MediaStream | null>(null)
   const recordingIdRef = useRef<string>('')
   const callInitiatedRef = useRef<boolean>(false) // Track if we've already initiated a call
+  const readySentRef = useRef<boolean>(false) // Track if we've sent ready signal
   
   const wsRef = useRef<WebSocket | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -74,11 +75,24 @@ const WebRTCCall: React.FC = () => {
   const recordedChunksRef = useRef<Blob[]>([])
   const chunkUploadIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const iceServers = {
+  const iceServers: RTCConfiguration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: [
+          'turn:146.190.10.192:3478',
+          'turn:146.190.10.192:3478?transport=tcp'
+        ],
+        username: 'lakeside',
+        credential: 'lakeside-turn-2025-secure-password',
+        credentialType: 'password'
+      } as RTCIceServer
+    ],
+    iceCandidatePoolSize: 10,
+    bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+    rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+    iceTransportPolicy: 'all' as RTCIceTransportPolicy
   }
 
   useEffect(() => {
@@ -122,7 +136,6 @@ const WebRTCCall: React.FC = () => {
 
   useEffect(() => {
     if (isConnected && podcastId && !isInPodcast) {
-      console.log('Auto-joining podcast:', podcastId)
       handleJoinPodcast()
     }
   }, [isConnected, podcastId, isInPodcast])
@@ -131,16 +144,14 @@ const WebRTCCall: React.FC = () => {
     const startLocalMedia = async () => {
       if (isInPodcast && !localStream && !localStreamRef.current) {
         try {
-          console.log('📹 Auto-starting local media stream...')
           const stream = await navigator.mediaDevices.getUserMedia({
             video: true,
             audio: true
           })
-          console.log('📹 Got local media stream:', stream)
           localStreamRef.current = stream
           setLocalStream(stream)
         } catch (error) {
-          console.error('❌ Failed to get local media:', error)
+          console.error('Failed to get local media:', error)
         }
       }
     }
@@ -148,23 +159,21 @@ const WebRTCCall: React.FC = () => {
     startLocalMedia()
   }, [isInPodcast])
 
+  // Send "ready" message when local stream is available
   useEffect(() => {
-    if (isInPodcast && !isInCall && remoteUsers.length > 0 && localStream && clientId && !peerConnectionRef.current && !callInitiatedRef.current) {
-      const shouldInitiate = clientId > remoteUsers[0]
-      
-      if (shouldInitiate) {
-        console.log('📞 Auto-starting call with remote user:', remoteUsers[0])
-        callInitiatedRef.current = true
-        setTimeout(() => {
-          if (!peerConnectionRef.current) {
-            handleStartCall(remoteUsers[0])
-          }
-        }, 500)
-      } else {
-        console.log('📞 Waiting for remote user to initiate call')
-      }
+    if (isInPodcast && localStream && !readySentRef.current && wsRef.current && clientId) {
+      console.log('🟢 Local stream ready, sending ready signal')
+      readySentRef.current = true
+      sendMessage({
+        type: 'ready',
+        podcastId: podcastId,
+        payload: {
+          clientId: clientId,
+          timestamp: Date.now()
+        }
+      }, wsRef)
     }
-  }, [isInPodcast, isInCall, remoteUsers.length, localStream && localStream.id, clientId])
+  }, [isInPodcast, localStream && localStream.id, clientId])
 
   useEffect(() => {
     if (podcastId && username) {
@@ -261,6 +270,21 @@ const WebRTCCall: React.FC = () => {
           setStoredHostUserId(message.payload.hostUserId)
         }
         break
+      
+      case 'both-ready':
+        console.log('🎯 Both clients ready! Payload:', message.payload)
+        if (message.payload?.shouldInitiate && message.payload?.targetUserId && !callInitiatedRef.current) {
+          callInitiatedRef.current = true
+          console.log('🚀 Initiating call to:', message.payload.targetUserId)
+          setTimeout(() => {
+            if (!peerConnectionRef.current) {
+              handleStartCall(message.payload.targetUserId)
+            }
+          }, 500) // Small delay to ensure state is stable
+        } else if (message.payload) {
+          console.log('✋ Waiting for offer from:', message.payload.targetUserId)
+        }
+        break
 
       case 'user-left':
         setRemoteUsers(prev => prev.filter(id => id !== message.from))
@@ -281,11 +305,40 @@ const WebRTCCall: React.FC = () => {
           }
           setIsInCall(false)
           callInitiatedRef.current = false // Reset so we can initiate again if they rejoin
+          readySentRef.current = false // Reset ready signal flag
           pendingICECandidates.current = []
         }
         break
 
       case 'offer':
+        // Ignore duplicate offers if we're already negotiating
+        if (peerConnectionRef.current) {
+          const pc = peerConnectionRef.current
+          const signalingState = pc.signalingState
+          const connectionState = pc.connectionState
+          const iceConnectionState = pc.iceConnectionState
+          
+          console.log('Received offer while peer connection exists:', {
+            signalingState,
+            connectionState,
+            iceConnectionState
+          })
+          
+          // If we're stable and ICE is negotiating, ignore the new offer
+          if (signalingState === 'stable' && 
+              (iceConnectionState === 'checking' || iceConnectionState === 'new' ||
+               connectionState === 'connecting' || connectionState === 'new')) {
+            console.log('⚠️ Ignoring duplicate offer - ICE negotiation in progress')
+            break
+          }
+          
+          // Otherwise, close and restart
+          console.log('Closing existing peer connection to handle new offer')
+          pc.close()
+          peerConnectionRef.current = null
+          // Don't reset callInitiatedRef - responder should stay responder
+        }
+        
         const currentStream = localStreamRef.current || localStream
         await handleOffer(
           message,
@@ -302,10 +355,18 @@ const WebRTCCall: React.FC = () => {
         break
 
       case 'answer':
+        if (!peerConnectionRef.current) {
+          console.warn('Received answer but no peer connection exists')
+          break
+        }
         await handleAnswer(message, peerConnectionRef, pendingICECandidates)
         break
 
       case 'ice-candidate':
+        if (!message.from) {
+          console.warn('Received ICE candidate without sender info')
+          break
+        }
         await handleICECandidate(message, peerConnectionRef, pendingICECandidates)
         break
 
@@ -361,9 +422,6 @@ const WebRTCCall: React.FC = () => {
         
         console.log('✅ Participant stopping recording automatically')
         handleStopRecording()
-        // Clear recording ID after stopping
-        setRecordingId('')
-        recordingIdRef.current = ''
         break
     }
   }
@@ -388,7 +446,12 @@ const WebRTCCall: React.FC = () => {
 
   const uploadChunk = async (chunks: Blob[], isFinal: boolean) => {
     console.log('uploadChunk called with', chunks.length, 'chunks, isFinal:', isFinal)
-    if (chunks.length === 0) return
+    
+    // Allow empty chunks only if it's the final notification
+    if (chunks.length === 0 && !isFinal) {
+      console.log('Empty chunk and not final, skipping upload')
+      return
+    }
 
     // Don't upload if we don't have a valid recording ID
     if (!recordingIdRef.current) {
@@ -401,7 +464,7 @@ const WebRTCCall: React.FC = () => {
       console.log('Blob size:', blob.size, 'bytes')
       
       if (blob.size === 0 && !isFinal) {
-        console.log('Empty chunk, not uploading')
+        console.log('Empty chunk and not final, not uploading')
         return
       }
 
@@ -463,6 +526,7 @@ const WebRTCCall: React.FC = () => {
     setRecordingId('')
     recordingIdRef.current = ''
     callInitiatedRef.current = false // Reset call initiation flag
+    readySentRef.current = false // Reset ready signal flag
     
     leavePodcast(
       wsRef,
@@ -483,11 +547,11 @@ const WebRTCCall: React.FC = () => {
     navigate('/dashboard/home')
   }
 
-  const handleInitializePeerConnection = () => {
+  const handleInitializePeerConnection = (targetUserId: string) => {
     return initializePeerConnection(
       iceServers,
       peerConnectionRef,
-      remoteUsers,
+      targetUserId,
       sendMessage,
       wsRef,
       setRemoteStream,
@@ -513,6 +577,7 @@ const WebRTCCall: React.FC = () => {
 
   const handleEndCall = () => {
     callInitiatedRef.current = false // Reset call initiation flag
+    readySentRef.current = false // Reset ready signal flag
     endCall(
       isRecording,
       handleStopRecording,
@@ -623,10 +688,6 @@ const WebRTCCall: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef)
-    
-    // Clear recording ID after stopping
-    setRecordingId('')
-    recordingIdRef.current = ''
     
     setTimeout(() => setIsProcessingRecording(false), 1000)
   }
@@ -750,13 +811,9 @@ const WebRTCCall: React.FC = () => {
                             className="w-full aspect-video bg-gray-600 rounded"
                           />
                           {remoteUsers.length > 0 && !isInCall && (
-                            <div className="text-center">
-                              <button 
-                                onClick={() => handleStartCall(remoteUsers[0])}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                              >
-                                Start Call
-                              </button>
+                            <div className="text-center text-green-400">
+                              <div className="animate-pulse">🔗 Connecting...</div>
+                              <p className="text-sm text-gray-400 mt-2">Call will start automatically when both are ready</p>
                             </div>
                           )}
                         </div>

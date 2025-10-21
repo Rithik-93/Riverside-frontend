@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 
 const StudioPreCheckPage: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
@@ -20,6 +21,7 @@ const StudioPreCheckPage: React.FC = () => {
       setAccessGranted(true);
     } catch (error) {
       console.error('Failed to access camera and microphone:', error);
+      alert('Failed to access camera and microphone. Please allow permissions and try again.');
     }
   };
 
@@ -30,62 +32,122 @@ const StudioPreCheckPage: React.FC = () => {
   }, [localStream]);
 
   const joinStudio = () => {
-    navigate(`/studio/${username}/${uuid}/join`);
+    // Stop the preview stream before navigating
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    navigate(`/studio/${username}/${uuid}/live`);
+  };
+
+  const handleBackToDashboard = () => {
+    // Clean up stream before navigating
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    navigate('/dashboard/home');
   };
 
   return (
-    <div className="h-screen w-screen bg-gray-50 flex items-center justify-center">
-      <div className="w-full h-full flex items-center justify-center px-6">
-        <div className="bg-white shadow-lg rounded-lg p-8 max-w-6xl w-full">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Studio - {user?.full_name || user?.username || username}
-              </h1>
-              <p className="text-gray-600">Studio ID: {uuid}</p>
-            </div>
-            <button
-              onClick={() => navigate('/dashboard/home')}
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex-1 pr-8">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-                Let's check your cam and mic
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Host: {user?.full_name || user?.username || username}
-              </p>
-              
-              <div className="text-center">
-                <button 
-                  onClick={accessGranted ? joinStudio : requestAccess}
-                  className={`font-bold py-4 px-8 rounded-lg text-xl ${
-                    accessGranted
-                      ? 'bg-green-500 hover:bg-green-700 text-white'
-                      : 'bg-blue-500 hover:bg-blue-700 text-white'
-                  }`}
-                >
-                  {accessGranted ? 'Join studio' : 'Allow access'}
-                </button>
-              </div>
-            </div>
-            
-            {accessGranted && localStream && (
-              <div className="flex-shrink-0">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-80 h-60 bg-gray-200 rounded-lg shadow-md"
+    <div className="min-h-screen bg-luxury-darker text-white flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#972fff]/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#c58aff]/10 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-4xl relative z-10">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-gradient-elegant flex items-center justify-center">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
                 />
+              </svg>
+            </div>
+            <span className="text-2xl font-display font-bold">
+              StudioCast
+            </span>
+          </div>
+          <h1 className="text-3xl font-display font-bold mb-2">
+            Studio - {user?.full_name || user?.username || username}
+          </h1>
+          <p className="text-white/60">
+            Studio ID: {uuid}
+          </p>
+        </div>
+
+        {/* Preview Card */}
+        <div className="bg-luxury-dark/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-luxury">
+          <h2 className="text-2xl font-display font-semibold mb-6 text-center">
+            Let's check your cam and mic
+          </h2>
+
+          {/* Video Preview */}
+          <div className="relative aspect-video bg-luxury-darker rounded-2xl overflow-hidden mb-6 border border-white/10">
+            {accessGranted ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <svg
+                    className="w-16 h-16 text-white/30 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-white/60">
+                    Camera preview will appear here
+                  </p>
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4">
+            {!accessGranted ? (
+              <button
+                onClick={requestAccess}
+                className="flex-1 py-4 bg-gradient-elegant rounded-xl font-semibold hover:shadow-glow transition-all"
+              >
+                Allow access
+              </button>
+            ) : (
+              <button
+                onClick={joinStudio}
+                className="flex-1 py-4 bg-gradient-elegant rounded-xl font-semibold hover:shadow-glow transition-all"
+              >
+                Join studio
+              </button>
+            )}
+            <button
+              onClick={handleBackToDashboard}
+              className="px-6 py-4 border border-white/10 rounded-xl font-semibold hover:bg-white/5 transition-all flex items-center gap-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back
+            </button>
           </div>
         </div>
       </div>

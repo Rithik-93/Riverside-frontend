@@ -76,40 +76,71 @@ export const leavePodcast = (
 export const initializePeerConnection = (
     iceServers: RTCConfiguration,
     peerConnectionRef: React.RefObject<RTCPeerConnection | null>,
-    remoteUsers: string[],
+    targetUserId: string,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
     wsRef: React.RefObject<WebSocket | null>,
     setRemoteStream: (value: MediaStream | null) => void,
     setIsInCall: (value: boolean) => void,
     endCall: () => void
   ) => {
+    console.log('🟢 initializePeerConnection: Creating new RTCPeerConnection')
+    console.log('🟢 initializePeerConnection: ICE servers:', iceServers)
+    console.log('🟢 initializePeerConnection: Target user:', targetUserId)
     const pc = new RTCPeerConnection(iceServers)
     peerConnectionRef.current = pc
 
     pc.onicecandidate = async (event) => {
-      if (event.candidate && remoteUsers.length > 0) {
+      if (event.candidate && targetUserId) {
+        const candidateStr = event.candidate.candidate
+        let candidateType = 'unknown'
+        if (candidateStr.includes('typ host')) candidateType = 'host'
+        else if (candidateStr.includes('typ srflx')) candidateType = 'srflx (STUN)'
+        else if (candidateStr.includes('typ relay')) candidateType = 'relay (TURN)'
+        else if (candidateStr.includes('typ prflx')) candidateType = 'prflx'
+        
+        console.log(`🟢 ICE candidate [${candidateType}] generated, sending to`, targetUserId)
+        console.log('   Candidate:', candidateStr)
+        
         sendMessage({
           type: 'ice-candidate',
-          to: remoteUsers[0],
+          to: targetUserId,
           payload: {
             candidate: event.candidate.candidate,
             sdpMid: event.candidate.sdpMid,
             sdpMLineIndex: event.candidate.sdpMLineIndex
           }
         }, wsRef)
+      } else if (event.candidate === null) {
+        console.log('🟢 ICE candidate gathering complete')
+      } else if (!targetUserId) {
+        console.warn('⚠️ ICE candidate generated but no targetUserId available')
       }
     }
 
     pc.ontrack = (event) => {
-      console.log('Received remote stream')
+      console.log('🟢 Remote track received:', event.track.kind, event.track.id)
       setRemoteStream(event.streams[0])
     }
 
+    pc.oniceconnectionstatechange = () => {
+      console.log('🟢 ICE connection state:', pc.iceConnectionState)
+    }
+
+    pc.onicegatheringstatechange = () => {
+      console.log('🟢 ICE gathering state:', pc.iceGatheringState)
+    }
+
+    pc.onsignalingstatechange = () => {
+      console.log('🟢 Signaling state:', pc.signalingState)
+    }
+
     pc.onconnectionstatechange = () => {
-      console.log('Connection state:', pc.connectionState)
+      console.log('🟢 Connection state:', pc.connectionState)
       if (pc.connectionState === 'connected') {
+        console.log('✅ Peer connection established!')
         setIsInCall(true)
       } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        console.log('❌ Peer connection failed or disconnected')
         endCall()
       }
     }
@@ -120,43 +151,37 @@ export const initializePeerConnection = (
 export const startCall = async (
     targetUserId: string,
     setLocalStream: (value: MediaStream | null) => void,
-    initializePeerConnection: () => RTCPeerConnection,
+    initializePeerConnection: (targetUserId: string) => RTCPeerConnection,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
     wsRef: React.RefObject<WebSocket | null>,
     existingStream?: MediaStream | null
   ) => {
-    console.log('📞 startCall function called')
-    console.log('📞 targetUserId:', targetUserId)
-    console.log('📞 existingStream:', existingStream)
-    
     try {
+      console.log('🔵 startCall: Initiating call to', targetUserId)
       let stream: MediaStream
       
       if (existingStream) {
-        console.log('📞 Using existing stream')
         stream = existingStream
+        console.log('🔵 startCall: Using existing stream')
       } else {
-        console.log('📞 Requesting user media...')
+        console.log('🔵 startCall: Getting new media stream')
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true
         })
-        
-        console.log('📞 Got user media stream:', stream)
         setLocalStream(stream)
-        console.log('📞 setLocalStream called with stream')
       }
       
-      console.log('📞 Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })))
-      
-      const pc = initializePeerConnection()
+      const pc = initializePeerConnection(targetUserId)
       
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
+        console.log('🔵 startCall: Added track:', track.kind)
       })
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
+      console.log('🔵 startCall: Sending offer to', targetUserId)
 
       sendMessage({
         type: 'offer',
@@ -165,7 +190,7 @@ export const startCall = async (
       }, wsRef)
 
     } catch (error) {
-      console.error('Error starting call:', error)
+      console.error('❌ startCall: Error:', error)
       alert('Error accessing camera/microphone: ' + error)
     }
   }
@@ -173,55 +198,81 @@ export const startCall = async (
 export const handleOffer = async (
     message: Message,
     setLocalStream: (value: MediaStream | null) => void,
-    initializePeerConnection: () => RTCPeerConnection,
+    initializePeerConnection: (targetUserId: string) => RTCPeerConnection,
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
     wsRef: React.RefObject<WebSocket | null>,
     existingStream?: MediaStream | null
   ) => {
-    console.log('📩 handleOffer called, existingStream:', existingStream)
+    console.log('🔵 handleOffer: Starting to handle offer from', message.from)
     try {
+      if (!message.from) {
+        console.error('❌ handleOffer: No sender ID in offer message')
+        return
+      }
+
       let stream: MediaStream
       
+      console.log('🔵 handleOffer: Getting media stream, existingStream:', !!existingStream)
       if (existingStream) {
-        console.log('📩 Using existing stream for answer')
         stream = existingStream
+        console.log('🔵 handleOffer: Using existing stream with', stream.getTracks().length, 'tracks')
       } else {
-        console.log('📩 Requesting new stream for answer')
+        console.log('🔵 handleOffer: Requesting new user media')
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true
         })
         setLocalStream(stream)
+        console.log('🔵 handleOffer: Got new stream with', stream.getTracks().length, 'tracks')
       }
       
-      const pc = initializePeerConnection()
+      console.log('🔵 handleOffer: Initializing peer connection with target:', message.from)
+      const pc = initializePeerConnection(message.from)
+      console.log('🔵 handleOffer: Peer connection created, state:', pc.signalingState)
       
+      console.log('🔵 handleOffer: Adding tracks to peer connection')
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
+        console.log('🔵 handleOffer: Added track:', track.kind, track.id)
       })
 
+      console.log('🔵 handleOffer: Setting remote description (offer)')
       await pc.setRemoteDescription({
         type: 'offer',
         sdp: message.payload.sdp
       })
+      console.log('🔵 handleOffer: Remote description set, state:', pc.signalingState)
 
+      console.log('🔵 handleOffer: Adding', pendingICECandidates.current.length, 'pending ICE candidates')
       for (const candidate of pendingICECandidates.current) {
         await pc.addIceCandidate(candidate)
       }
       pendingICECandidates.current = []
 
+      console.log('🔵 handleOffer: Creating answer')
       const answer = await pc.createAnswer()
+      console.log('🔵 handleOffer: Answer created')
+      
+      console.log('🔵 handleOffer: Setting local description (answer)')
       await pc.setLocalDescription(answer)
+      console.log('🔵 handleOffer: Local description set, state:', pc.signalingState)
 
+      console.log('🔵 handleOffer: Sending answer to', message.from)
       sendMessage({
         type: 'answer',
         to: message.from!,
         payload: { sdp: answer.sdp }
       }, wsRef)
+      console.log('✅ handleOffer: Answer sent successfully')
 
     } catch (error) {
-      console.error('Error handling offer:', error)
+      console.error('❌ handleOffer: Error at some step:', error)
+      console.error('❌ handleOffer: Error details:', {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      })
     }
   }
 
@@ -253,6 +304,15 @@ export const handleICECandidate = async (
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>
   ) => {
     try {
+      const candidateStr = message.payload.candidate
+      let candidateType = 'unknown'
+      if (candidateStr.includes('typ host')) candidateType = 'host'
+      else if (candidateStr.includes('typ srflx')) candidateType = 'srflx (STUN)'
+      else if (candidateStr.includes('typ relay')) candidateType = 'relay (TURN)'
+      else if (candidateStr.includes('typ prflx')) candidateType = 'prflx'
+      
+      console.log(`🔷 Received ICE candidate [${candidateType}] from ${message.from}`)
+      
       const candidate = new RTCIceCandidate({
         candidate: message.payload.candidate,
         sdpMid: message.payload.sdpMid,
@@ -261,11 +321,13 @@ export const handleICECandidate = async (
 
       if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
         await peerConnectionRef.current.addIceCandidate(candidate)
+        console.log(`✅ Added ICE candidate [${candidateType}] to peer connection`)
       } else {
         pendingICECandidates.current.push(candidate)
+        console.log(`📌 Queued ICE candidate [${candidateType}] (no remote description yet), queue size:`, pendingICECandidates.current.length)
       }
     } catch (error) {
-      console.error('Error handling ICE candidate:', error)
+      console.error('❌ Error handling ICE candidate:', error)
     }
   }
 
@@ -373,9 +435,8 @@ export const startRecording = async (
       }
   
       mediaRecorder.onstop = () => {
-        if (recordedChunksRef.current.length > 0) {
-          uploadChunk(recordedChunksRef.current, true)
-        }
+        console.log('📹 MediaRecorder stopped, sending final chunk notification')
+        uploadChunk(recordedChunksRef.current, true)
       }
   
       try {

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -137,6 +138,33 @@
 }
 
 @layer utilities {
+  /* Custom gradient utilities for Studio page */
+  .bg-gradient-elegant {
+    background: linear-gradient(135deg, #972fff 0%, #c58aff 100%);
+  }
+
+  .bg-luxury-darker {
+    background-color: #0a0a0f;
+  }
+
+  .bg-luxury-dark {
+    background-color: #1a1a1f;
+  }
+
+  .shadow-luxury {
+    box-shadow: 0 20px 60px -12px rgba(151, 47, 255, 0.15),
+                0 8px 25px -10px rgba(197, 138, 255, 0.1);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 40px rgba(151, 47, 255, 0.6),
+                0 0 60px rgba(197, 138, 255, 0.4);
+  }
+
+  .font-display {
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  }
+
   @keyframes float {
     0%, 100% {
       transform: translateY(0px) rotate(0deg);
