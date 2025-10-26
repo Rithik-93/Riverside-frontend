@@ -3,6 +3,7 @@ import { config } from '../config/env'
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
+import { toast } from 'sonner';
 import { 
   sendMessage, 
   joinPodcast, 
@@ -184,10 +185,10 @@ const WebRTCCall: React.FC = () => {
 
   const copyInviteLink = async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink)
-      console.log('Invite link copied to clipboard')
+      await navigator.clipboard.writeText(podcastId)
+      console.log('Studio ID copied to clipboard')
     } catch (err) {
-      console.error('Failed to copy invite link:', err)
+      console.error('Failed to copy studio ID:', err)
     }
   }
 
@@ -641,7 +642,7 @@ const WebRTCCall: React.FC = () => {
     
     if (!currentLocalStream) {
       console.log('❌ No local stream available')
-      alert('Please start a call first to enable recording')
+      toast.warning('Please start a call first to enable recording')
       return
     }
     

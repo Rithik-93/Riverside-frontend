@@ -27,9 +27,10 @@ const AppRouter: React.FC = () => {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50">
+      <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
         {user && <Navigation />}
-        <Routes>
+        <div className="flex-1 overflow-hidden">
+          <Routes>
           <Route 
             path="/login" 
             element={!user ? <LoginPage /> : <Navigate to="/dashboard/home" replace />} 
@@ -73,6 +74,7 @@ const AppRouter: React.FC = () => {
             element={<Navigate to={user ? "/dashboard/home" : "/login"} replace />} 
           />
         </Routes>
+        </div>
       </div>
     </Router>
   );

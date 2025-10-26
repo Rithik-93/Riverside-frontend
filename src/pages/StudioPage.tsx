@@ -17,6 +17,7 @@ import {
   MonitorPlay,
   StopCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { 
   sendMessage, 
   joinPodcast, 
@@ -596,7 +597,7 @@ const StudioPage: React.FC = () => {
     
     if (!currentLocalStream) {
       console.log('❌ No local stream available');
-      alert('Please start a call first to enable recording');
+      toast.warning('Please start a call first to enable recording');
       return;
     }
     
@@ -643,7 +644,7 @@ const StudioPage: React.FC = () => {
 
   const copyInviteLink = async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText(podcastId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -652,7 +653,7 @@ const StudioPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-luxury-darker text-white flex flex-col">
+    <div className="h-full bg-luxury-darker text-white flex flex-col">
       {/* Header */}
       <header className="backdrop-blur-xl bg-luxury-dark/80 border-b border-white/5 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -737,7 +738,7 @@ const StudioPage: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 px-6 pt-4 pb-2">
         <div className="max-w-7xl mx-auto h-full">
           {!isInPodcast ? (
             <div className="flex items-center justify-center h-full">
@@ -844,14 +845,14 @@ const StudioPage: React.FC = () => {
       </div>
 
       {/* Controls Footer */}
-      <footer className="backdrop-blur-xl bg-luxury-dark/80 border-t border-white/5 px-6 py-6">
+      <footer className="backdrop-blur-xl bg-luxury-dark/80 border-t border-white/5 px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Left Controls */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMuted(!isMuted)}
               disabled={!localStream}
-              className={`p-4 rounded-xl font-semibold transition-all ${
+              className={`p-3 rounded-xl font-semibold transition-all ${
                 isMuted
                   ? 'bg-red-500/20 border border-red-500/40 text-red-400'
                   : 'bg-white/10 border border-white/10 hover:bg-white/20'
@@ -859,16 +860,16 @@ const StudioPage: React.FC = () => {
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted ? (
-                <MicOff className="w-5 h-5" />
+                <MicOff className="w-4 h-4" />
               ) : (
-                <Mic className="w-5 h-5" />
+                <Mic className="w-4 h-4" />
               )}
             </button>
 
             <button
               onClick={() => setIsVideoOff(!isVideoOff)}
               disabled={!localStream}
-              className={`p-4 rounded-xl font-semibold transition-all ${
+              className={`p-3 rounded-xl font-semibold transition-all ${
                 isVideoOff
                   ? 'bg-red-500/20 border border-red-500/40 text-red-400'
                   : 'bg-white/10 border border-white/10 hover:bg-white/20'
@@ -876,17 +877,17 @@ const StudioPage: React.FC = () => {
               title={isVideoOff ? 'Turn on video' : 'Turn off video'}
             >
               {isVideoOff ? (
-                <VideoOff className="w-5 h-5" />
+                <VideoOff className="w-4 h-4" />
               ) : (
-                <Video className="w-5 h-5" />
+                <Video className="w-4 h-4" />
               )}
             </button>
 
             <button 
-              className="p-4 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all" 
+              className="p-3 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all" 
               title="Settings"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
             </button>
           </div>
 
@@ -895,9 +896,9 @@ const StudioPage: React.FC = () => {
             {isInCall && (
               <button
                 onClick={handleEndCall}
-                className="px-8 py-4 bg-red-500 hover:bg-red-600 rounded-xl font-semibold transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-xl font-semibold transition-all flex items-center gap-2"
               >
-                <PhoneOff className="w-5 h-5" />
+                <PhoneOff className="w-4 h-4" />
                 End Call
               </button>
             )}
@@ -911,24 +912,24 @@ const StudioPage: React.FC = () => {
                   <button
                     onClick={handleHostStartRecording}
                     disabled={!localStream}
-                    className="px-6 py-4 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-3 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <MonitorPlay className="w-5 h-5" />
+                    <MonitorPlay className="w-4 h-4" />
                     Start Recording
                   </button>
                 ) : (
                   <button
                     onClick={handleHostStopRecording}
-                    className="px-6 py-4 bg-red-500/20 border border-red-500/40 text-red-400 rounded-xl hover:bg-red-500/30 transition-all flex items-center gap-2"
+                    className="px-5 py-3 bg-red-500/20 border border-red-500/40 text-red-400 rounded-xl hover:bg-red-500/30 transition-all flex items-center gap-2"
                   >
-                    <StopCircle className="w-5 h-5" />
+                    <StopCircle className="w-4 h-4" />
                     Stop Recording
                   </button>
                 )}
               </>
             )}
             {!isHost && isInCall && (
-              <div className="px-6 py-4 bg-white/5 border border-white/10 rounded-xl">
+              <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-xl">
                 <p className="text-sm text-white/60">
                   {isRecording ? 'Recording in progress...' : 'Recording controlled by host'}
                 </p>

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 const StudioPreCheckPage: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
@@ -21,7 +22,7 @@ const StudioPreCheckPage: React.FC = () => {
       setAccessGranted(true);
     } catch (error) {
       console.error('Failed to access camera and microphone:', error);
-      alert('Failed to access camera and microphone. Please allow permissions and try again.');
+      toast.error('Failed to access camera and microphone. Please allow permissions and try again.');
     }
   };
 

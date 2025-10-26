@@ -1,4 +1,5 @@
 import React from 'react'
+import { toast } from 'sonner'
 
 interface Message {
   type: string
@@ -191,7 +192,7 @@ export const startCall = async (
 
     } catch (error) {
       console.error('❌ startCall: Error:', error)
-      alert('Error accessing camera/microphone: ' + error)
+      toast.error('Error accessing camera/microphone: ' + error)
     }
   }
 
@@ -401,12 +402,12 @@ export const startRecording = async (
     chunkUploadIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>
   ) => {
     if (!localStream) {
-      alert('No local stream available for recording')
+      toast.error('No local stream available for recording')
       return
     }
 
     if (!window.MediaRecorder) {
-      alert('MediaRecorder is not supported in this browser. Please use Chrome, Firefox, or Edge.')
+      toast.error('MediaRecorder is not supported in this browser. Please use Chrome, Firefox, or Edge.')
       return
     }
   
@@ -464,7 +465,7 @@ export const startRecording = async (
 
     } catch (error) {
       console.error('Error starting recording:', error)
-      alert('Error starting recording: ' + error + '\n\nThis might be due to browser compatibility. Try using Chrome or Firefox.')
+      toast.error('Error starting recording: ' + error + '\n\nThis might be due to browser compatibility. Try using Chrome or Firefox.')
     }
   }
 
