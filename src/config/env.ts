@@ -1,4 +1,11 @@
-const rawEnv = (typeof import.meta !== 'undefined' && (import.meta as any).env) || {}
+const getRuntimeConfig = (): Record<string, string> => {
+	if (typeof window !== 'undefined' && (window as any).__APP_CONFIG__) {
+		return (window as any).__APP_CONFIG__
+	}
+	return (typeof import.meta !== 'undefined' && (import.meta as any).env) || {}
+}
+
+const rawEnv = getRuntimeConfig()
 
 const requiredVars = [
 	'VITE_API_URL',

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
 import { toast } from 'sonner';
+import { fetchTurnCredentials } from '../utils/turnCredentials';
 import { 
   sendMessage, 
   joinPodcast, 
@@ -75,26 +76,32 @@ const WebRTCCall: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const chunkUploadIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [iceServers, setIceServers] = useState<RTCConfiguration | null>(null)
+  const iceServersRef = useRef<RTCConfiguration | null>(null)
 
-  const iceServers: RTCConfiguration = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      {
-        urls: [
-          'turn:146.190.10.192:3478',
-          'turn:146.190.10.192:3478?transport=tcp'
-        ],
-        username: 'lakeside',
-        credential: 'lakeside-turn-2025-secure-password',
-        credentialType: 'password'
-      } as RTCIceServer
-    ],
-    iceCandidatePoolSize: 10,
-    bundlePolicy: 'max-bundle' as RTCBundlePolicy,
-    rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-    iceTransportPolicy: 'all' as RTCIceTransportPolicy
-  }
+  useEffect(() => {
+    fetchTurnCredentials()
+      .then((config) => {
+        iceServersRef.current = config;
+        setIceServers(config);
+      })
+      .catch((error) => {
+        console.error('❌ Failed to load TURN credentials:', error);
+        // Set fallback STUN servers
+        const fallback = {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ],
+          iceCandidatePoolSize: 10,
+          bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+          rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+          iceTransportPolicy: 'all' as RTCIceTransportPolicy,
+        };
+        iceServersRef.current = fallback;
+        setIceServers(fallback);
+      });
+  }, [])
 
   useEffect(() => {
     connectWebSocket()
@@ -277,13 +284,33 @@ const WebRTCCall: React.FC = () => {
         if (message.payload?.shouldInitiate && message.payload?.targetUserId && !callInitiatedRef.current) {
           callInitiatedRef.current = true
           console.log('🚀 Initiating call to:', message.payload.targetUserId)
-          setTimeout(() => {
-            if (!peerConnectionRef.current) {
-              handleStartCall(message.payload.targetUserId)
+          
+          // Wait for iceServers to be loaded before starting call (check ref for immediate access)
+          const attemptStartCall = async (retries = 10, delay = 500) => {
+            const currentIceServers = iceServersRef.current;
+            if (!currentIceServers) {
+              if (retries > 0) {
+                console.log(`⏳ Waiting for ICE servers... (${retries} retries left)`);
+                setTimeout(() => attemptStartCall(retries - 1, delay), delay);
+                return;
+              } else {
+                console.error('❌ ICE servers not loaded after retries');
+                toast.error('Failed to load TURN credentials. Please refresh.');
+                callInitiatedRef.current = false;
+                return;
+              }
             }
-          }, 500) // Small delay to ensure state is stable
+            
+            // Start call immediately when ready
+            if (!peerConnectionRef.current && currentIceServers) {
+              console.log('✅ ICE servers ready, starting call...');
+              handleStartCall(message.payload.targetUserId);
+            }
+          };
+          
+          attemptStartCall();
         } else if (message.payload) {
-          console.log('✋ Waiting for offer from:', message.payload.targetUserId)
+          console.log('✋ Waiting for offer from:', message.payload.targetUserId);
         }
         break
 
@@ -476,6 +503,7 @@ const WebRTCCall: React.FC = () => {
       const requestData = {
         file_name: fileName,
         content_type: 'video/webm',
+        content_length: blob.size.toString(),
         user_id: clientId,
         podcast_id: podcastId,
         recording_id: recordingIdRef.current,
@@ -498,7 +526,6 @@ const WebRTCCall: React.FC = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'video/webm',
-          'x-amz-acl': 'public-read',
         },
         body: blob
       })
@@ -548,17 +575,27 @@ const WebRTCCall: React.FC = () => {
     navigate('/dashboard/home')
   }
 
-  const handleInitializePeerConnection = (targetUserId: string) => {
-    return initializePeerConnection(
-      iceServers,
-      peerConnectionRef,
-      targetUserId,
-      sendMessage,
-      wsRef,
-      setRemoteStream,
-      setIsInCall,
-      handleEndCall
-    )
+  const handleInitializePeerConnection = (targetUserId: string): RTCPeerConnection | null => {
+    const currentIceServers = iceServersRef.current || iceServers;
+    if (!currentIceServers) {
+      console.error('❌ ICE servers not loaded yet, cannot initialize peer connection');
+      return null;
+    }
+    try {
+      return initializePeerConnection(
+        currentIceServers,
+        peerConnectionRef,
+        targetUserId,
+        sendMessage,
+        wsRef,
+        setRemoteStream,
+        setIsInCall,
+        handleEndCall
+      );
+    } catch (error) {
+      console.error('❌ Failed to initialize peer connection:', error);
+      return null;
+    }
   }
 
   const handleStartCall = (targetUserId: string) => {

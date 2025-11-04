@@ -152,20 +152,17 @@ export const initializePeerConnection = (
 export const startCall = async (
     targetUserId: string,
     setLocalStream: (value: MediaStream | null) => void,
-    initializePeerConnection: (targetUserId: string) => RTCPeerConnection,
+    initializePeerConnection: (targetUserId: string) => RTCPeerConnection | null,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
     wsRef: React.RefObject<WebSocket | null>,
     existingStream?: MediaStream | null
   ) => {
     try {
-      console.log('🔵 startCall: Initiating call to', targetUserId)
       let stream: MediaStream
       
       if (existingStream) {
         stream = existingStream
-        console.log('🔵 startCall: Using existing stream')
       } else {
-        console.log('🔵 startCall: Getting new media stream')
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true
@@ -174,32 +171,48 @@ export const startCall = async (
       }
       
       const pc = initializePeerConnection(targetUserId)
+      if (!pc) {
+        console.error('❌ startCall: Failed to initialize peer connection')
+        return
+      }
       
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
-        console.log('🔵 startCall: Added track:', track.kind)
       })
 
-      const offer = await pc.createOffer()
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      })
       await pc.setLocalDescription(offer)
-      console.log('🔵 startCall: Sending offer to', targetUserId)
 
-      sendMessage({
-        type: 'offer',
-        to: targetUserId,
-        payload: { sdp: offer.sdp }
-      }, wsRef)
+      const sendOffer = () => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.warn('⚠️ WebSocket not ready, retrying in 500ms...')
+          setTimeout(sendOffer, 500)
+          return
+        }
+
+        sendMessage({
+          type: 'offer',
+          to: targetUserId,
+          payload: { sdp: offer.sdp }
+        }, wsRef)
+        
+      }
+
+      sendOffer()
 
     } catch (error) {
       console.error('❌ startCall: Error:', error)
-      toast.error('Error accessing camera/microphone: ' + error)
+      toast.error('Error initiating call: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
 
 export const handleOffer = async (
     message: Message,
     setLocalStream: (value: MediaStream | null) => void,
-    initializePeerConnection: (targetUserId: string) => RTCPeerConnection,
+    initializePeerConnection: (targetUserId: string) => RTCPeerConnection | null,
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>,
     sendMessage: (message: Message, wsRef: React.RefObject<WebSocket | null>) => void,
     wsRef: React.RefObject<WebSocket | null>,
@@ -214,58 +227,64 @@ export const handleOffer = async (
 
       let stream: MediaStream
       
-      console.log('🔵 handleOffer: Getting media stream, existingStream:', !!existingStream)
       if (existingStream) {
         stream = existingStream
-        console.log('🔵 handleOffer: Using existing stream with', stream.getTracks().length, 'tracks')
       } else {
-        console.log('🔵 handleOffer: Requesting new user media')
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true
         })
         setLocalStream(stream)
-        console.log('🔵 handleOffer: Got new stream with', stream.getTracks().length, 'tracks')
       }
       
-      console.log('🔵 handleOffer: Initializing peer connection with target:', message.from)
       const pc = initializePeerConnection(message.from)
-      console.log('🔵 handleOffer: Peer connection created, state:', pc.signalingState)
+      if (!pc) {
+        console.error('❌ handleOffer: Failed to initialize peer connection')
+        return
+      }
       
-      console.log('🔵 handleOffer: Adding tracks to peer connection')
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
-        console.log('🔵 handleOffer: Added track:', track.kind, track.id)
       })
 
-      console.log('🔵 handleOffer: Setting remote description (offer)')
-      await pc.setRemoteDescription({
-        type: 'offer',
-        sdp: message.payload.sdp
-      })
-      console.log('🔵 handleOffer: Remote description set, state:', pc.signalingState)
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription({
+          type: 'offer',
+          sdp: message.payload.sdp
+        }))
+      } catch (error) {
+        console.error('❌ handleOffer: Failed to set remote description:', error)
+        throw error
+      }
 
-      console.log('🔵 handleOffer: Adding', pendingICECandidates.current.length, 'pending ICE candidates')
       for (const candidate of pendingICECandidates.current) {
         await pc.addIceCandidate(candidate)
       }
       pendingICECandidates.current = []
 
-      console.log('🔵 handleOffer: Creating answer')
-      const answer = await pc.createAnswer()
-      console.log('🔵 handleOffer: Answer created')
+      const answer = await pc.createAnswer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      })
       
-      console.log('🔵 handleOffer: Setting local description (answer)')
       await pc.setLocalDescription(answer)
-      console.log('🔵 handleOffer: Local description set, state:', pc.signalingState)
 
-      console.log('🔵 handleOffer: Sending answer to', message.from)
-      sendMessage({
-        type: 'answer',
-        to: message.from!,
-        payload: { sdp: answer.sdp }
-      }, wsRef)
-      console.log('✅ handleOffer: Answer sent successfully')
+      // Retry sending answer if WebSocket is temporarily unavailable
+      const sendAnswer = () => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.warn('⚠️ WebSocket not ready for answer, retrying in 500ms...')
+          setTimeout(sendAnswer, 500)
+          return
+        }
+
+        sendMessage({
+          type: 'answer',
+          to: message.from!,
+          payload: { sdp: answer.sdp }
+        }, wsRef)
+      }
+
+      sendAnswer()
 
     } catch (error) {
       console.error('❌ handleOffer: Error at some step:', error)
@@ -283,19 +302,42 @@ export const handleAnswer = async (
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>
   ) => {
     try {
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription({
-          type: 'answer',
-          sdp: message.payload.sdp
-        })
-
-        for (const candidate of pendingICECandidates.current) {
-          await peerConnectionRef.current.addIceCandidate(candidate)
-        }
-        pendingICECandidates.current = []
+      if (!peerConnectionRef.current) {
+        console.warn('⚠️ handleAnswer: No peer connection exists, answer may have arrived too early')
+        return
       }
+
+      const pc = peerConnectionRef.current
+
+      const setRemoteDesc = async (retries = 3) => {
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription({
+            type: 'answer',
+            sdp: message.payload.sdp
+          }))
+          console.log('✅ handleAnswer: Remote description set successfully')
+        } catch (error: any) {
+          if (retries > 0 && error?.name === 'InvalidStateError') {
+            console.warn(`⚠️ handleAnswer: Invalid state, retrying... (${retries} left)`)
+            await new Promise(resolve => setTimeout(resolve, 500))
+            return setRemoteDesc(retries - 1)
+          }
+          throw error
+        }
+      }
+
+      await setRemoteDesc()
+
+      for (const candidate of pendingICECandidates.current) {
+        try {
+          await pc.addIceCandidate(candidate)
+        } catch (error) {
+          console.warn('⚠️ handleAnswer: Failed to add ICE candidate:', error)
+        }
+      }
+      pendingICECandidates.current = []
     } catch (error) {
-      console.error('Error handling answer:', error)
+      console.error('❌ handleAnswer: Error:', error)
     }
   }
 
@@ -305,15 +347,6 @@ export const handleICECandidate = async (
     pendingICECandidates: React.MutableRefObject<RTCIceCandidate[]>
   ) => {
     try {
-      const candidateStr = message.payload.candidate
-      let candidateType = 'unknown'
-      if (candidateStr.includes('typ host')) candidateType = 'host'
-      else if (candidateStr.includes('typ srflx')) candidateType = 'srflx (STUN)'
-      else if (candidateStr.includes('typ relay')) candidateType = 'relay (TURN)'
-      else if (candidateStr.includes('typ prflx')) candidateType = 'prflx'
-      
-      console.log(`🔷 Received ICE candidate [${candidateType}] from ${message.from}`)
-      
       const candidate = new RTCIceCandidate({
         candidate: message.payload.candidate,
         sdpMid: message.payload.sdpMid,
@@ -322,10 +355,8 @@ export const handleICECandidate = async (
 
       if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
         await peerConnectionRef.current.addIceCandidate(candidate)
-        console.log(`✅ Added ICE candidate [${candidateType}] to peer connection`)
       } else {
         pendingICECandidates.current.push(candidate)
-        console.log(`📌 Queued ICE candidate [${candidateType}] (no remote description yet), queue size:`, pendingICECandidates.current.length)
       }
     } catch (error) {
       console.error('❌ Error handling ICE candidate:', error)
