@@ -475,6 +475,11 @@ const WebRTCCall: React.FC = () => {
   const uploadChunk = async (chunks: Blob[], isFinal: boolean) => {
     console.log('uploadChunk called with', chunks.length, 'chunks, isFinal:', isFinal)
     
+    if (!isFinal && !isRecording) {
+      console.log('Recording stopped, skipping non-final chunk upload')
+      return
+    }
+    
     // Allow empty chunks only if it's the final notification
     if (chunks.length === 0 && !isFinal) {
       console.log('Empty chunk and not final, skipping upload')
@@ -515,11 +520,24 @@ const WebRTCCall: React.FC = () => {
       
       console.log('🔍 DEBUG: Sending presigned URL request with data:', requestData)
       
-      const presignedData = await httpClient.post<{
-        pre_signed_url: string;
-        s3_key: string;
-        chunk_index: number;
-      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
+      let presignedData
+      try {
+        presignedData = await httpClient.post<{
+          pre_signed_url: string;
+          s3_key: string;
+          chunk_index: number;
+        }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
+      } catch (error: any) {
+        if (error?.response?.status === 403 || error?.status === 403) {
+          console.log('Backend rejected upload (recording ended), stopping chunk uploads')
+          if (chunkUploadIntervalRef.current) {
+            clearInterval(chunkUploadIntervalRef.current)
+            chunkUploadIntervalRef.current = null
+          }
+          return
+        }
+        throw error
+      }
       console.log('Got presigned URL:', presignedData.s3_key, 'Chunk index:', presignedData.chunk_index)
 
       const uploadResponse = await fetch(presignedData.pre_signed_url, {

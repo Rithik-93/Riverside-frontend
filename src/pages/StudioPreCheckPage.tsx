@@ -57,26 +57,6 @@ const StudioPreCheckPage: React.FC = () => {
       <div className="w-full max-w-4xl relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-elegant flex items-center justify-center">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
-            </div>
-            <span className="text-2xl font-display font-bold">
-              StudioCast
-            </span>
-          </div>
           <h1 className="text-3xl font-display font-bold mb-2">
             Studio - {user?.full_name || user?.username || username}
           </h1>
@@ -86,7 +66,7 @@ const StudioPreCheckPage: React.FC = () => {
         </div>
 
         {/* Preview Card */}
-        <div className="bg-luxury-dark/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-luxury">
+        <div className="bg-luxury-dark/50 backdrop-blur-xl border border-white/10 rounded-3xl max-w-2xl max-h-lg mx-auto p-8 shadow-luxury">
           <h2 className="text-2xl font-display font-semibold mb-6 text-center">
             Let's check your cam and mic
           </h2>
@@ -130,7 +110,7 @@ const StudioPreCheckPage: React.FC = () => {
             {!accessGranted ? (
               <button
                 onClick={requestAccess}
-                className="flex-1 py-4 bg-gradient-elegant rounded-xl font-semibold hover:shadow-glow transition-all"
+                className="flex-1 py-1 bg-gradient-elegant h-12 rounded-xl font-semibold hover:shadow-glow transition-all"
               >
                 Allow access
               </button>

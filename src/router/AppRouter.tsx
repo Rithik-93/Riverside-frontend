@@ -27,9 +27,9 @@ const AppRouter: React.FC = () => {
 
   return (
     <Router>
-      <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50">
         {user && <Navigation />}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1">
           <Routes>
           <Route 
             path="/login" 

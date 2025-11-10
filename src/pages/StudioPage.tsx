@@ -445,6 +445,11 @@ const StudioPage: React.FC = () => {
   };
 
   const uploadChunk = async (chunks: Blob[], isFinal: boolean) => {
+    if (!isFinal && !isRecording) {
+      console.log('Recording stopped, skipping non-final chunk upload');
+      return;
+    }
+    
     if (chunks.length === 0 && !isFinal) {
       return;
     }
@@ -477,11 +482,24 @@ const StudioPage: React.FC = () => {
         file_size: blob.size
       };
       
-      const presignedData = await httpClient.post<{
-        pre_signed_url: string;
-        s3_key: string;
-        chunk_index: number;
-      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData);
+      let presignedData
+      try {
+        presignedData = await httpClient.post<{
+          pre_signed_url: string;
+          s3_key: string;
+          chunk_index: number;
+        }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData);
+      } catch (error: any) {
+        if (error?.response?.status === 403 || error?.status === 403) {
+          console.log('Backend rejected upload (recording ended), stopping chunk uploads');
+          if (chunkUploadIntervalRef.current) {
+            clearInterval(chunkUploadIntervalRef.current);
+            chunkUploadIntervalRef.current = null;
+          }
+          return;
+        }
+        throw error;
+      }
 
       const uploadResponse = await fetch(presignedData.pre_signed_url, {
         method: 'PUT',
@@ -689,7 +707,7 @@ const StudioPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full bg-luxury-darker text-white flex flex-col">
+    <div className="min-h-screen bg-luxury-darker text-white flex flex-col">
       {/* Header */}
       <header className="backdrop-blur-xl bg-luxury-dark/80 border-b border-white/5 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
