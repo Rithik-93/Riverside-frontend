@@ -427,10 +427,11 @@ export const startRecording = async (
     localStream: MediaStream | null,
     mediaRecorderRef: React.RefObject<MediaRecorder | null>,
     recordedChunksRef: React.MutableRefObject<Blob[]>,
-    uploadChunk: (chunks: Blob[], isFinal: boolean) => Promise<void>,
+    uploadChunk: (chunks: Blob[], isFinal: boolean) => Promise<boolean>,
     setIsRecording: (value: boolean) => void,
     setRecordingStartTime: (value: Date | null) => void,
-    chunkUploadIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>
+    chunkUploadIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>,
+    chunkCounterRef?: React.MutableRefObject<number>
   ) => {
     if (!localStream) {
       toast.error('No local stream available for recording')
@@ -440,6 +441,17 @@ export const startRecording = async (
     if (!window.MediaRecorder) {
       toast.error('MediaRecorder is not supported in this browser. Please use Chrome, Firefox, or Edge.')
       return
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      console.log('⚠️ MediaRecorder already active, skipping start')
+      return
+    }
+
+    if (chunkUploadIntervalRef.current) {
+      console.log('⚠️ Clearing existing upload interval before starting new recording')
+      clearInterval(chunkUploadIntervalRef.current)
+      chunkUploadIntervalRef.current = null
     }
   
     try {
@@ -457,42 +469,79 @@ export const startRecording = async (
   
       mediaRecorderRef.current = mediaRecorder
       recordedChunksRef.current = []
+      
+      // Reset chunk counter when starting a new recording
+      if (chunkCounterRef) {
+        console.log('🔄 Resetting chunk counter to 0 for new recording')
+        chunkCounterRef.current = 0
+      }
   
       mediaRecorder.ondataavailable = (event) => {
-        console.log('Data available, size:', event.data.size, 'bytes')
+        console.log('📦 MediaRecorder: Data available, size:', event.data.size, 'bytes')
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data)
-          console.log('Total chunks:', recordedChunksRef.current.length)
+          console.log('📦 MediaRecorder: Total chunks accumulated:', recordedChunksRef.current.length, 'Total size:', recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes')
+        } else {
+          console.warn('⚠️ MediaRecorder: Received empty chunk, skipping')
         }
       }
   
-      mediaRecorder.onstop = () => {
-        console.log('📹 MediaRecorder stopped, sending final chunk notification')
-        uploadChunk(recordedChunksRef.current, true)
+      mediaRecorder.onstop = async () => {
+        const finalChunks = [...recordedChunksRef.current]
+        console.log('📹 MediaRecorder stopped, final chunks count:', finalChunks.length)
+        console.log('📹 MediaRecorder: Final total size:', finalChunks.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes')
+        
+        // Upload each remaining chunk individually, mark only the last one as final
+        if (finalChunks.length > 0) {
+          for (let i = 0; i < finalChunks.length; i++) {
+            const isLastChunk = i === finalChunks.length - 1
+            await uploadChunk([finalChunks[i]], isLastChunk)
+          }
+          recordedChunksRef.current = []
+        } else {
+          // No chunks remaining, send final notification
+          await uploadChunk([], true)
+        }
       }
   
       try {
-        mediaRecorder.start(1000)
+        mediaRecorder.start(10000)
+        console.log('🎬 MediaRecorder started with 10000ms timeslice (chunks every 10 seconds)')
       } catch (startError) {
-        console.warn('Failed to start with 1000ms timeslice, trying 2000ms:', startError)
+        console.warn('Failed to start with 10000ms timeslice, trying 2000ms:', startError)
         try {
           mediaRecorder.start(2000)
+          console.log('🎬 MediaRecorder started with 2000ms timeslice (chunks every 2 seconds)')
         } catch (secondError) {
           console.warn('Failed to start with 2000ms timeslice, trying without timeslice:', secondError)
           mediaRecorder.start()
+          console.log('🎬 MediaRecorder started without timeslice (chunks on stop only)')
         }
       }
       
       setIsRecording(true)
       setRecordingStartTime(new Date())
 
-      chunkUploadIntervalRef.current = setInterval(() => {
-        console.log('Upload interval triggered, chunks:', recordedChunksRef.current.length)
-        if (recordedChunksRef.current.length > 0) {
-          uploadChunk(recordedChunksRef.current, false)
-          recordedChunksRef.current = []
+      chunkUploadIntervalRef.current = setInterval(async () => {
+        const chunksCount = recordedChunksRef.current.length
+        console.log('⏰ Upload interval triggered, accumulated chunks:', chunksCount)
+        if (chunksCount > 0) {
+          // Upload ONLY the first accumulated chunk (oldest MediaRecorder chunk)
+          // This ensures each chunk is uploaded individually without batching
+          const chunkToUpload = recordedChunksRef.current.shift() // Remove first chunk
+          if (chunkToUpload) {
+            console.log(`📤 Uploading 1 chunk: ${chunkToUpload.size} bytes`)
+            const success = await uploadChunk([chunkToUpload], false)
+            if (!success) {
+              // Put it back if upload failed
+              recordedChunksRef.current.unshift(chunkToUpload)
+              console.warn(`⚠️ Failed to upload chunk, will retry`)
+            }
+          }
         }
-      }, 10000)
+      }, 10000) // Check every 10 seconds for new chunks
+      
+      console.log('✅ Upload interval set up, will trigger every 10 seconds')
 
     } catch (error) {
       console.error('Error starting recording:', error)
@@ -504,8 +553,7 @@ export const stopRecording = (
     mediaRecorderRef: React.RefObject<MediaRecorder | null>,
     chunkUploadIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>,
     setIsRecording: (value: boolean) => void,
-    setRecordingStartTime: (value: Date | null) => void,
-    chunkCounterRef?: React.MutableRefObject<number>
+    setRecordingStartTime: (value: Date | null) => void
   ) => {
     console.log('🛑 stopRecording function called')
     console.log('🛑 mediaRecorderRef.current:', mediaRecorderRef.current)
@@ -527,13 +575,9 @@ export const stopRecording = (
       console.log('🛑 No upload interval to clear')
     }
     
-    // Reset chunk counter for next recording
-    if (chunkCounterRef) {
-      console.log('🛑 Resetting chunk counter from', chunkCounterRef.current, 'to 0')
-      chunkCounterRef.current = 0
-    }
-    
-    console.log('🛑 Setting isRecording to false')
+    // Don't reset chunk counter here - let the final upload complete first
+    // The counter will be reset when starting a new recording
+    console.log('🛑 Setting isRecording to false (chunk counter will reset on next recording start)')
     setIsRecording(false)
     setRecordingStartTime(null)
   }

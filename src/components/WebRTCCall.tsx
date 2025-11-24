@@ -76,6 +76,8 @@ const WebRTCCall: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const chunkUploadIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const chunkCounterRef = useRef(0)
+  const isRecordingRef = useRef(false)
   const [iceServers, setIceServers] = useState<RTCConfiguration | null>(null)
   const iceServersRef = useRef<RTCConfiguration | null>(null)
 
@@ -420,11 +422,12 @@ const WebRTCCall: React.FC = () => {
         
         if (message.payload?.hostUserId === user?.id) {
           console.log('ℹ️ Host received their own recording message, setting recording ID and continuing')
+          break
         }
         
         const currentLocalStream = localStreamRef.current
         
-        if (!isRecording && currentLocalStream) {
+        if (!isRecording && currentLocalStream && !mediaRecorderRef.current) {
           console.log('✅ Participant starting recording automatically')
           handleStartRecording()
         } else if (!isRecording && !currentLocalStream) {
@@ -470,35 +473,35 @@ const WebRTCCall: React.FC = () => {
     }
   }
 
-  const chunkCounterRef = useRef(0)
-
-  const uploadChunk = async (chunks: Blob[], isFinal: boolean) => {
-    console.log('uploadChunk called with', chunks.length, 'chunks, isFinal:', isFinal)
+  const uploadChunk = async (chunks: Blob[], isFinal: boolean): Promise<boolean> => {
+    console.log(`📤 uploadChunk called: chunks=${chunks.length}, isFinal=${isFinal}, chunkCounter=${chunkCounterRef.current}`)
     
-    if (!isFinal && !isRecording) {
-      console.log('Recording stopped, skipping non-final chunk upload')
-      return
+    // Allow final chunks to upload even if recording stopped (they come from onstop handler)
+    if (!isFinal && !isRecordingRef.current) {
+      console.log('⏹️ Recording stopped, skipping non-final chunk upload')
+      return false
     }
     
     // Allow empty chunks only if it's the final notification
     if (chunks.length === 0 && !isFinal) {
-      console.log('Empty chunk and not final, skipping upload')
-      return
+      console.log('⚠️ Empty chunk and not final, skipping upload')
+      return false
     }
 
     // Don't upload if we don't have a valid recording ID
     if (!recordingIdRef.current) {
       console.log('⚠️ No recording ID available, skipping upload')
-      return
+      return false
     }
 
     try {
+      // Combine all chunks into a single blob for upload
       const blob = new Blob(chunks, { type: 'video/webm' })
-      console.log('Blob size:', blob.size, 'bytes')
+      console.log(`📦 Blob details: size=${blob.size} bytes, type=${blob.type}, chunksInBlob=${chunks.length}`)
       
       if (blob.size === 0 && !isFinal) {
-        console.log('Empty chunk and not final, not uploading')
-        return
+        console.log('⚠️ Empty chunk and not final, not uploading')
+        return false
       }
 
       const timestamp = Date.now().toString()
@@ -518,28 +521,36 @@ const WebRTCCall: React.FC = () => {
         file_size: blob.size
       }
       
-      console.log('🔍 DEBUG: Sending presigned URL request with data:', requestData)
+      console.log(`🔗 Requesting presigned URL for chunk ${currentChunkIndex}:`, {
+        fileName,
+        size: blob.size,
+        isFinal,
+        chunksCount: chunks.length,
+        recordingId: recordingIdRef.current
+      })
       
       let presignedData
       try {
         presignedData = await httpClient.post<{
-          pre_signed_url: string;
-          s3_key: string;
-          chunk_index: number;
-        }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
+        pre_signed_url: string;
+        s3_key: string;
+        chunk_index: number;
+      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
+        console.log(`✅ Got presigned URL: S3 key=${presignedData.s3_key}, backend chunk_index=${presignedData.chunk_index}`)
       } catch (error: any) {
         if (error?.response?.status === 403 || error?.status === 403) {
-          console.log('Backend rejected upload (recording ended), stopping chunk uploads')
+          console.log('🚫 Backend rejected upload (recording ended), stopping chunk uploads')
           if (chunkUploadIntervalRef.current) {
             clearInterval(chunkUploadIntervalRef.current)
             chunkUploadIntervalRef.current = null
           }
-          return
+          isRecordingRef.current = false
+          return false
         }
         throw error
       }
-      console.log('Got presigned URL:', presignedData.s3_key, 'Chunk index:', presignedData.chunk_index)
 
+      console.log(`⬆️ Uploading chunk ${currentChunkIndex} to S3: ${blob.size} bytes (contains ${chunks.length} MediaRecorder chunks)`)
       const uploadResponse = await fetch(presignedData.pre_signed_url, {
         method: 'PUT',
         headers: {
@@ -554,9 +565,11 @@ const WebRTCCall: React.FC = () => {
 
       chunkCounterRef.current += 1
 
-      console.log(`✅ Chunk ${currentChunkIndex} uploaded to S3 successfully: ${blob.size} bytes, S3 Key: ${presignedData.s3_key}`)
+      console.log(`✅ Chunk ${currentChunkIndex} uploaded successfully: ${blob.size} bytes, S3 Key: ${presignedData.s3_key}, Next chunk index: ${chunkCounterRef.current}`)
+      return true
     } catch (error) {
-      console.error('Error uploading chunk:', error)
+      console.error(`❌ Error uploading chunk ${chunkCounterRef.current}:`, error)
+      return false
     }
   }
 
@@ -663,9 +676,13 @@ const WebRTCCall: React.FC = () => {
       mediaRecorderRef,
       recordedChunksRef,
       uploadChunk,
-      setIsRecording,
+      (value: boolean) => {
+        setIsRecording(value)
+        isRecordingRef.current = value
+      },
       setRecordingStartTime,
-      chunkUploadIntervalRef
+      chunkUploadIntervalRef,
+      chunkCounterRef
     )
   }
 
@@ -673,9 +690,11 @@ const WebRTCCall: React.FC = () => {
     stopRecording(
       mediaRecorderRef,
       chunkUploadIntervalRef,
-      setIsRecording,
-      setRecordingStartTime,
-      chunkCounterRef
+      (value: boolean) => {
+        setIsRecording(value)
+        isRecordingRef.current = value
+      },
+      setRecordingStartTime
     )
     
     await finalizeRecordingSession()
