@@ -21,9 +21,9 @@ export function assertRequiredEnv(): void {
 }
 
 export const config = {
-	apiBaseUrl: String(rawEnv.VITE_API_URL || ''),
-	wsUrl: String(rawEnv.VITE_WS_URL || ''),
-	uploadBaseUrl: String(rawEnv.VITE_UPLOAD_URL || ''),
+	apiBaseUrl: String(rawEnv.VITE_API_URL),
+	wsUrl: String(rawEnv.VITE_WS_URL),
+	uploadBaseUrl: String(rawEnv.VITE_UPLOAD_URL),
 }
 
 export type AppConfig = typeof config

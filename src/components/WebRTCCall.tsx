@@ -5,18 +5,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
 import { toast } from 'sonner';
 import { fetchTurnCredentials } from '../utils/turnCredentials';
-import { 
-  sendMessage, 
-  joinPodcast, 
-  leavePodcast, 
-  initializePeerConnection, 
-  startCall, 
-  handleOffer, 
-  handleAnswer, 
-  handleICECandidate, 
-  endCall, 
-  startRecording, 
-  stopRecording 
+import {
+  sendMessage,
+  joinPodcast,
+  leavePodcast,
+  initializePeerConnection,
+  startCall,
+  handleOffer,
+  handleAnswer,
+  handleICECandidate,
+  endCall,
+  startRecording,
+  stopRecording
 } from '../handlers/handler';
 
 const RecordingTimer = ({ startTime }: { startTime: Date }) => {
@@ -46,10 +46,10 @@ const WebRTCCall: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [isConnected, setIsConnected] = useState(false)
   const [podcastId, setPodcastId] = useState(uuid || '')
-  const [ _, setRecordingId] = useState('')
+  const [_, setRecordingId] = useState('')
   const [clientId, setClientId] = useState('')
   const [isInPodcast, setIsInPodcast] = useState(false)
   const [isInCall, setIsInCall] = useState(false)
@@ -62,12 +62,12 @@ const WebRTCCall: React.FC = () => {
   const [storedHostUserId, setStoredHostUserId] = useState<string | null>(null)
   const [isProcessingRecording, setIsProcessingRecording] = useState(false)
   const [inviteLink, setInviteLink] = useState('')
-  
+
   const localStreamRef = useRef<MediaStream | null>(null)
   const recordingIdRef = useRef<string>('')
   const callInitiatedRef = useRef<boolean>(false) // Track if we've already initiated a call
   const readySentRef = useRef<boolean>(false) // Track if we've sent ready signal
-  
+
   const wsRef = useRef<WebSocket | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
@@ -107,7 +107,7 @@ const WebRTCCall: React.FC = () => {
 
   useEffect(() => {
     connectWebSocket()
-    
+
     const handleBeforeUnload = () => {
       if (wsRef.current) {
         wsRef.current.close()
@@ -122,7 +122,7 @@ const WebRTCCall: React.FC = () => {
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    
+
     return () => {
       if (wsRef.current) {
         wsRef.current.close()
@@ -165,7 +165,7 @@ const WebRTCCall: React.FC = () => {
         }
       }
     }
-    
+
     startLocalMedia()
   }, [isInPodcast])
 
@@ -222,7 +222,7 @@ const WebRTCCall: React.FC = () => {
   }, [user?.id, storedHostUserId])
 
   const connectWebSocket = () => {
-    const ws = new WebSocket(`${config.wsUrl}`)
+    const ws = new WebSocket(`${config.wsUrl}/ws`)
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -264,7 +264,7 @@ const WebRTCCall: React.FC = () => {
         if (message.payload.hostUserId) {
           setStoredHostUserId(message.payload.hostUserId)
         }
-        
+
         // If recording is already in progress when joining, set the recording ID
         if (message.payload.isRecording && message.payload.recordingId) {
           console.log('📡 Recording already in progress, setting recording ID:', message.payload.recordingId)
@@ -280,13 +280,13 @@ const WebRTCCall: React.FC = () => {
           setStoredHostUserId(message.payload.hostUserId)
         }
         break
-      
+
       case 'both-ready':
         console.log('🎯 Both clients ready! Payload:', message.payload)
         if (message.payload?.shouldInitiate && message.payload?.targetUserId && !callInitiatedRef.current) {
           callInitiatedRef.current = true
           console.log('🚀 Initiating call to:', message.payload.targetUserId)
-          
+
           // Wait for iceServers to be loaded before starting call (check ref for immediate access)
           const attemptStartCall = async (retries = 10, delay = 500) => {
             const currentIceServers = iceServersRef.current;
@@ -302,14 +302,14 @@ const WebRTCCall: React.FC = () => {
                 return;
               }
             }
-            
+
             // Start call immediately when ready
             if (!peerConnectionRef.current && currentIceServers) {
               console.log('✅ ICE servers ready, starting call...');
               handleStartCall(message.payload.targetUserId);
             }
           };
-          
+
           attemptStartCall();
         } else if (message.payload) {
           console.log('✋ Waiting for offer from:', message.payload.targetUserId);
@@ -347,28 +347,28 @@ const WebRTCCall: React.FC = () => {
           const signalingState = pc.signalingState
           const connectionState = pc.connectionState
           const iceConnectionState = pc.iceConnectionState
-          
+
           console.log('Received offer while peer connection exists:', {
             signalingState,
             connectionState,
             iceConnectionState
           })
-          
+
           // If we're stable and ICE is negotiating, ignore the new offer
-          if (signalingState === 'stable' && 
-              (iceConnectionState === 'checking' || iceConnectionState === 'new' ||
-               connectionState === 'connecting' || connectionState === 'new')) {
+          if (signalingState === 'stable' &&
+            (iceConnectionState === 'checking' || iceConnectionState === 'new' ||
+              connectionState === 'connecting' || connectionState === 'new')) {
             console.log('⚠️ Ignoring duplicate offer - ICE negotiation in progress')
             break
           }
-          
+
           // Otherwise, close and restart
           console.log('Closing existing peer connection to handle new offer')
           pc.close()
           peerConnectionRef.current = null
           // Don't reset callInitiatedRef - responder should stay responder
         }
-        
+
         const currentStream = localStreamRef.current || localStream
         await handleOffer(
           message,
@@ -408,7 +408,7 @@ const WebRTCCall: React.FC = () => {
         console.log('📡 localStream (state):', localStream)
         console.log('📡 localStreamRef (ref):', localStreamRef.current)
         console.log('📡 isInCall:', isInCall)
-        
+
         if (message.payload?.recordingId) {
           // Check if we already have this recording ID
           if (recordingIdRef.current === message.payload.recordingId) {
@@ -419,14 +419,14 @@ const WebRTCCall: React.FC = () => {
           recordingIdRef.current = message.payload.recordingId
           console.log('🎬 Set recording ID:', message.payload.recordingId)
         }
-        
+
         if (message.payload?.hostUserId === user?.id) {
           console.log('ℹ️ Host received their own recording message, setting recording ID and continuing')
           break
         }
-        
+
         const currentLocalStream = localStreamRef.current
-        
+
         if (!isRecording && currentLocalStream && !mediaRecorderRef.current) {
           console.log('✅ Participant starting recording automatically')
           handleStartRecording()
@@ -445,12 +445,12 @@ const WebRTCCall: React.FC = () => {
         console.log('📡 isRecording:', isRecording)
         console.log('📡 localStream (state):', localStream)
         console.log('📡 localStreamRef (ref):', localStreamRef.current)
-        
+
         if (message.payload?.hostUserId === user?.id) {
           console.log('ℹ️ Host received their own stop recording message, ignoring')
           break
         }
-        
+
         console.log('✅ Participant stopping recording automatically')
         handleStopRecording()
         break
@@ -475,13 +475,13 @@ const WebRTCCall: React.FC = () => {
 
   const uploadChunk = async (chunks: Blob[], isFinal: boolean): Promise<boolean> => {
     console.log(`📤 uploadChunk called: chunks=${chunks.length}, isFinal=${isFinal}, chunkCounter=${chunkCounterRef.current}`)
-    
+
     // Allow final chunks to upload even if recording stopped (they come from onstop handler)
     if (!isFinal && !isRecordingRef.current) {
       console.log('⏹️ Recording stopped, skipping non-final chunk upload')
       return false
     }
-    
+
     // Allow empty chunks only if it's the final notification
     if (chunks.length === 0 && !isFinal) {
       console.log('⚠️ Empty chunk and not final, skipping upload')
@@ -498,7 +498,7 @@ const WebRTCCall: React.FC = () => {
       // Combine all chunks into a single blob for upload
       const blob = new Blob(chunks, { type: 'video/webm' })
       console.log(`📦 Blob details: size=${blob.size} bytes, type=${blob.type}, chunksInBlob=${chunks.length}`)
-      
+
       if (blob.size === 0 && !isFinal) {
         console.log('⚠️ Empty chunk and not final, not uploading')
         return false
@@ -520,7 +520,7 @@ const WebRTCCall: React.FC = () => {
         chunk_index: currentChunkIndex,
         file_size: blob.size
       }
-      
+
       console.log(`🔗 Requesting presigned URL for chunk ${currentChunkIndex}:`, {
         fileName,
         size: blob.size,
@@ -528,14 +528,14 @@ const WebRTCCall: React.FC = () => {
         chunksCount: chunks.length,
         recordingId: recordingIdRef.current
       })
-      
+
       let presignedData
       try {
         presignedData = await httpClient.post<{
-        pre_signed_url: string;
-        s3_key: string;
-        chunk_index: number;
-      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
+          pre_signed_url: string;
+          s3_key: string;
+          chunk_index: number;
+        }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData)
         console.log(`✅ Got presigned URL: S3 key=${presignedData.s3_key}, backend chunk_index=${presignedData.chunk_index}`)
       } catch (error: any) {
         if (error?.response?.status === 403 || error?.status === 403) {
@@ -586,7 +586,7 @@ const WebRTCCall: React.FC = () => {
     recordingIdRef.current = ''
     callInitiatedRef.current = false // Reset call initiation flag
     readySentRef.current = false // Reset ready signal flag
-    
+
     leavePodcast(
       wsRef,
       setIsInPodcast,
@@ -663,14 +663,14 @@ const WebRTCCall: React.FC = () => {
 
   const handleStartRecording = async () => {
     const currentLocalStream = localStreamRef.current || localStream
-    
+
     if (!currentLocalStream) {
       console.log('❌ Cannot start recording: No local stream available')
       return
     }
-    
+
     await createRecordingSession()
-    
+
     startRecording(
       currentLocalStream,
       mediaRecorderRef,
@@ -696,34 +696,34 @@ const WebRTCCall: React.FC = () => {
       },
       setRecordingStartTime
     )
-    
+
     await finalizeRecordingSession()
   }
 
   const handleHostStartRecording = () => {
-    
+
     if (!isHost) {
       console.log('❌ Only the host can control recording')
       return
     }
-    
+
     if (isProcessingRecording) {
       console.log('⏳ Recording command already being processed, ignoring')
       return
     }
-    
+
     const currentLocalStream = localStreamRef.current || localStream
-    
+
     if (!currentLocalStream) {
       console.log('❌ No local stream available')
       toast.warning('Please start a call first to enable recording')
       return
     }
-    
+
     setIsProcessingRecording(true)
     console.log('✅ Starting recording for host')
     handleStartRecording()
-    
+
     console.log('✅ Sending start-recording message to participants')
     sendMessage({
       type: 'start-recording',
@@ -734,7 +734,7 @@ const WebRTCCall: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef)
-    
+
     setTimeout(() => setIsProcessingRecording(false), 1000)
   }
 
@@ -743,16 +743,16 @@ const WebRTCCall: React.FC = () => {
       console.log('Only the host can control recording')
       return
     }
-    
+
     if (isProcessingRecording) {
       console.log('⏳ Recording command already being processed, ignoring')
       return
     }
-    
+
     setIsProcessingRecording(true)
     console.log('✅ Stopping recording for host')
     handleStopRecording()
-    
+
     console.log('✅ Sending stop-recording message to participants')
     sendMessage({
       type: 'stop-recording',
@@ -763,7 +763,7 @@ const WebRTCCall: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef)
-    
+
     setTimeout(() => setIsProcessingRecording(false), 1000)
   }
 
@@ -799,8 +799,8 @@ const WebRTCCall: React.FC = () => {
                       onKeyPress={(e) => e.key === 'Enter' && handleJoinPodcast()}
                       className="flex-1 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
-                    <button 
-                      onClick={handleJoinPodcast} 
+                    <button
+                      onClick={handleJoinPodcast}
                       disabled={!isConnected || !podcastId.trim()}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -825,8 +825,8 @@ const WebRTCCall: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <button 
-                      onClick={handleLeavePodcast} 
+                    <button
+                      onClick={handleLeavePodcast}
                       className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                     >
                       Leave Podcast
@@ -846,7 +846,7 @@ const WebRTCCall: React.FC = () => {
                         className="w-full aspect-video bg-gray-600 rounded"
                       />
                     </div>
-                    
+
                     {/* Participant Video or Invite Section */}
                     <div className="bg-gray-700 rounded-lg p-4">
                       <h4 className="text-white mb-2">Participants</h4>
@@ -856,7 +856,7 @@ const WebRTCCall: React.FC = () => {
                             <h3 className="text-lg font-semibold text-white mb-2">Invite people</h3>
                             <p className="text-gray-300 mb-4">Share this link to invite guests to your studio.</p>
                           </div>
-                          
+
                           <div className="w-full max-w-md">
                             <div className="flex space-x-2 mb-4">
                               <input
@@ -865,7 +865,7 @@ const WebRTCCall: React.FC = () => {
                                 readOnly
                                 className="flex-1 px-3 py-2 bg-gray-600 text-white border border-gray-500 rounded-md text-sm"
                               />
-                              <button 
+                              <button
                                 onClick={copyInviteLink}
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm"
                               >
@@ -895,26 +895,26 @@ const WebRTCCall: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Recording Controls */}
                   {isInCall && (
                     <div className="call-controls bg-gray-700 rounded-lg p-4">
-                      <button 
-                        onClick={handleEndCall} 
+                      <button
+                        onClick={handleEndCall}
                         className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-4"
                       >
                         End Call
                       </button>
-                      
+
                       <div className="debug-info text-xs text-gray-400 mb-4">
                         UserID: {user?.id} | Host: {isHost ? 'Yes' : 'No'} | Podcast: {podcastId}
                       </div>
-                      
+
                       {isHost ? (
                         <div className="host-controls bg-yellow-900 bg-opacity-30 p-4 rounded-lg border border-yellow-600">
                           <div className="host-indicator text-yellow-400 mb-3 font-bold text-lg">🎙️ You are the Host</div>
                           <div className="mb-4">
-                            <button 
+                            <button
                               onClick={isRecording ? handleHostStopRecording : handleHostStartRecording}
                               className={`record-btn host-record-btn ${isRecording ? 'recording' : ''} ${!localStream ? 'disabled' : ''} bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed`}
                               disabled={!localStream}
@@ -950,7 +950,7 @@ const WebRTCCall: React.FC = () => {
                           )}
                         </div>
                       )}
-                      
+
                       {isRecording && recordingStartTime && (
                         <RecordingTimer startTime={recordingStartTime} />
                       )}

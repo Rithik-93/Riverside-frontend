@@ -3,34 +3,34 @@ import { config } from '../config/env';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpClient } from '../services/httpClient';
-import { 
-  Video, 
-  VideoOff, 
-  Mic, 
-  MicOff, 
-  PhoneOff, 
-  Settings, 
-  Users, 
-  Copy, 
-  Check, 
+import {
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Settings,
+  Users,
+  Copy,
+  Check,
   ArrowLeft,
   MonitorPlay,
   StopCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchTurnCredentials } from '../utils/turnCredentials';
-import { 
-  sendMessage, 
-  joinPodcast, 
-  leavePodcast, 
-  initializePeerConnection, 
-  startCall, 
-  handleOffer, 
-  handleAnswer, 
-  handleICECandidate, 
-  endCall, 
-  startRecording, 
-  stopRecording 
+import {
+  sendMessage,
+  joinPodcast,
+  leavePodcast,
+  initializePeerConnection,
+  startCall,
+  handleOffer,
+  handleAnswer,
+  handleICECandidate,
+  endCall,
+  startRecording,
+  stopRecording
 } from '../handlers/handler';
 
 interface Message {
@@ -46,7 +46,7 @@ const StudioPage: React.FC = () => {
   const { username, uuid } = useParams<{ username: string; uuid: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [isConnected, setIsConnected] = useState(false);
   const [podcastId] = useState(uuid || '');
   const [, setRecordingId] = useState('');
@@ -65,12 +65,12 @@ const StudioPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  
+
   const localStreamRef = useRef<MediaStream | null>(null);
   const recordingIdRef = useRef<string>('');
   const callInitiatedRef = useRef<boolean>(false);
   const readySentRef = useRef<boolean>(false);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -110,7 +110,7 @@ const StudioPage: React.FC = () => {
 
   useEffect(() => {
     connectWebSocket();
-    
+
     const handleBeforeUnload = () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -125,7 +125,7 @@ const StudioPage: React.FC = () => {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -168,7 +168,7 @@ const StudioPage: React.FC = () => {
         }
       }
     };
-    
+
     startLocalMedia();
   }, [isInPodcast]);
 
@@ -234,7 +234,7 @@ const StudioPage: React.FC = () => {
   }, [isVideoOff, localStream]);
 
   const connectWebSocket = () => {
-    const ws = new WebSocket(`${config.wsUrl}`);
+    const ws = new WebSocket(`${config.wsUrl}/ws`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -276,7 +276,7 @@ const StudioPage: React.FC = () => {
         if (message.payload.hostUserId) {
           setStoredHostUserId(message.payload.hostUserId);
         }
-        
+
         if (message.payload.isRecording && message.payload.recordingId) {
           console.log('📡 Recording already in progress, setting recording ID:', message.payload.recordingId);
           setRecordingId(message.payload.recordingId);
@@ -291,13 +291,13 @@ const StudioPage: React.FC = () => {
           setStoredHostUserId(message.payload.hostUserId);
         }
         break;
-      
+
       case 'both-ready':
         console.log('🎯 Both clients ready! Payload:', message.payload);
         if (message.payload?.shouldInitiate && message.payload?.targetUserId && !callInitiatedRef.current) {
           callInitiatedRef.current = true;
           console.log('🚀 Initiating call to:', message.payload.targetUserId);
-          
+
           // Wait for iceServers to be loaded before starting call (check ref for immediate access)
           const attemptStartCall = async (retries = 10, delay = 500) => {
             const currentIceServers = iceServersRef.current;
@@ -313,14 +313,14 @@ const StudioPage: React.FC = () => {
                 return;
               }
             }
-            
+
             // Start call immediately when ready
             if (!peerConnectionRef.current && currentIceServers) {
               console.log('✅ ICE servers ready, starting call...');
               handleStartCall(message.payload.targetUserId);
             }
           };
-          
+
           attemptStartCall();
         } else if (message.payload) {
           console.log('✋ Waiting for offer from:', message.payload.targetUserId);
@@ -356,25 +356,25 @@ const StudioPage: React.FC = () => {
           const signalingState = pc.signalingState;
           const connectionState = pc.connectionState;
           const iceConnectionState = pc.iceConnectionState;
-          
+
           console.log('Received offer while peer connection exists:', {
             signalingState,
             connectionState,
             iceConnectionState
           });
-          
-          if (signalingState === 'stable' && 
-              (iceConnectionState === 'checking' || iceConnectionState === 'new' ||
-               connectionState === 'connecting' || connectionState === 'new')) {
+
+          if (signalingState === 'stable' &&
+            (iceConnectionState === 'checking' || iceConnectionState === 'new' ||
+              connectionState === 'connecting' || connectionState === 'new')) {
             console.log('⚠️ Ignoring duplicate offer - ICE negotiation in progress');
             break;
           }
-          
+
           console.log('Closing existing peer connection to handle new offer');
           pc.close();
           peerConnectionRef.current = null;
         }
-        
+
         const currentStream = localStreamRef.current || localStream;
         await handleOffer(
           message,
@@ -408,7 +408,7 @@ const StudioPage: React.FC = () => {
 
       case 'recording-started':
         console.log('📡 Received recording-started message');
-        
+
         if (message.payload?.recordingId) {
           if (recordingIdRef.current === message.payload.recordingId) {
             console.log('ℹ️ Already have this recording ID, ignoring duplicate message');
@@ -418,14 +418,14 @@ const StudioPage: React.FC = () => {
           recordingIdRef.current = message.payload.recordingId;
           console.log('🎬 Set recording ID:', message.payload.recordingId);
         }
-        
+
         if (message.payload?.hostUserId === user?.id) {
           console.log('ℹ️ Host received their own recording message, setting recording ID and continuing');
           break;
         }
-        
+
         const currentLocalStream = localStreamRef.current;
-        
+
         if (!isRecording && currentLocalStream && !mediaRecorderRef.current) {
           console.log('✅ Participant starting recording automatically');
           handleStartRecording();
@@ -434,12 +434,12 @@ const StudioPage: React.FC = () => {
 
       case 'recording-stopped':
         console.log('📡 Received recording-stopped message');
-        
+
         if (message.payload?.hostUserId === user?.id) {
           console.log('ℹ️ Host received their own stop recording message, ignoring');
           break;
         }
-        
+
         console.log('✅ Participant stopping recording automatically');
         handleStopRecording();
         break;
@@ -448,13 +448,13 @@ const StudioPage: React.FC = () => {
 
   const uploadChunk = async (chunks: Blob[], isFinal: boolean): Promise<boolean> => {
     console.log(`📤 uploadChunk called: chunks=${chunks.length}, isFinal=${isFinal}, chunkCounter=${chunkCounterRef.current}`);
-    
+
     // Allow final chunks to upload even if recording stopped (they come from onstop handler)
     if (!isFinal && !isRecordingRef.current) {
       console.log('⏹️ Recording stopped, skipping non-final chunk upload');
       return false;
     }
-    
+
     if (chunks.length === 0 && !isFinal) {
       console.log('⚠️ Empty chunks array and not final, skipping upload');
       return false;
@@ -469,7 +469,7 @@ const StudioPage: React.FC = () => {
       // Combine all chunks into a single blob for upload
       const blob = new Blob(chunks, { type: 'video/webm' });
       console.log(`📦 Blob details: size=${blob.size} bytes, type=${blob.type}, chunksInBlob=${chunks.length}`);
-      
+
       if (blob.size === 0 && !isFinal) {
         console.log('⚠️ Empty blob and not final, skipping upload');
         return false;
@@ -490,7 +490,7 @@ const StudioPage: React.FC = () => {
         chunk_index: currentChunkIndex,
         file_size: blob.size
       };
-      
+
       console.log(`🔗 Requesting presigned URL for chunk ${currentChunkIndex}:`, {
         fileName,
         size: blob.size,
@@ -498,14 +498,14 @@ const StudioPage: React.FC = () => {
         chunksCount: chunks.length,
         recordingId: recordingIdRef.current
       });
-      
+
       let presignedData
       try {
         presignedData = await httpClient.post<{
-        pre_signed_url: string;
-        s3_key: string;
-        chunk_index: number;
-      }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData);
+          pre_signed_url: string;
+          s3_key: string;
+          chunk_index: number;
+        }>(`${config.uploadBaseUrl}/api/v1/upload/presigned-url`, requestData);
         console.log(`✅ Got presigned URL: S3 key=${presignedData.s3_key}, backend chunk_index=${presignedData.chunk_index}`);
       } catch (error: any) {
         if (error?.response?.status === 403 || error?.status === 403) {
@@ -555,12 +555,12 @@ const StudioPage: React.FC = () => {
     recordingIdRef.current = '';
     callInitiatedRef.current = false;
     readySentRef.current = false;
-    
+
     leavePodcast(
       wsRef,
       setIsInPodcast,
       setRemoteUsers,
-      () => {},
+      () => { },
       isRecording,
       handleStopRecording,
       localStream,
@@ -632,12 +632,12 @@ const StudioPage: React.FC = () => {
 
   const handleStartRecording = async () => {
     const currentLocalStream = localStreamRef.current || localStream;
-    
+
     if (!currentLocalStream) {
       console.log('❌ Cannot start recording: No local stream available');
       return;
     }
-    
+
     startRecording(
       currentLocalStream,
       mediaRecorderRef,
@@ -670,22 +670,22 @@ const StudioPage: React.FC = () => {
       console.log('❌ Only the host can control recording');
       return;
     }
-    
+
     if (isProcessingRecording) {
       return;
     }
-    
+
     const currentLocalStream = localStreamRef.current || localStream;
-    
+
     if (!currentLocalStream) {
       console.log('❌ No local stream available');
       toast.warning('Please start a call first to enable recording');
       return;
     }
-    
+
     setIsProcessingRecording(true);
     handleStartRecording();
-    
+
     sendMessage({
       type: 'start-recording',
       podcastId: podcastId,
@@ -695,7 +695,7 @@ const StudioPage: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef);
-    
+
     setTimeout(() => setIsProcessingRecording(false), 1000);
   };
 
@@ -703,14 +703,14 @@ const StudioPage: React.FC = () => {
     if (!isHost) {
       return;
     }
-    
+
     if (isProcessingRecording) {
       return;
     }
-    
+
     setIsProcessingRecording(true);
     handleStopRecording();
-    
+
     sendMessage({
       type: 'stop-recording',
       podcastId: podcastId,
@@ -720,7 +720,7 @@ const StudioPage: React.FC = () => {
         timestamp: Date.now()
       }
     }, wsRef);
-    
+
     setTimeout(() => setIsProcessingRecording(false), 1000);
   };
 
@@ -768,17 +768,14 @@ const StudioPage: React.FC = () => {
 
             {/* Status Indicators */}
             <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-                isConnected 
-                  ? 'bg-green-500/10 border border-green-500/20' 
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isConnected
+                  ? 'bg-green-500/10 border border-green-500/20'
                   : 'bg-red-500/10 border border-red-500/20'
-              }`}>
-                <div className={`w-2 h-2 rounded-full animate-pulse ${
-                  isConnected ? 'bg-green-400' : 'bg-red-400'
-                }`} />
-                <span className={`text-xs font-medium ${
-                  isConnected ? 'text-green-400' : 'text-red-400'
                 }`}>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'
+                  }`} />
+                <span className={`text-xs font-medium ${isConnected ? 'text-green-400' : 'text-red-400'
+                  }`}>
                   {isConnected ? 'Connected' : 'Connecting...'}
                 </span>
               </div>
@@ -934,11 +931,10 @@ const StudioPage: React.FC = () => {
             <button
               onClick={() => setIsMuted(!isMuted)}
               disabled={!localStream}
-              className={`p-3 rounded-xl font-semibold transition-all ${
-                isMuted
+              className={`p-3 rounded-xl font-semibold transition-all ${isMuted
                   ? 'bg-red-500/20 border border-red-500/40 text-red-400'
                   : 'bg-white/10 border border-white/10 hover:bg-white/20'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted ? (
@@ -951,11 +947,10 @@ const StudioPage: React.FC = () => {
             <button
               onClick={() => setIsVideoOff(!isVideoOff)}
               disabled={!localStream}
-              className={`p-3 rounded-xl font-semibold transition-all ${
-                isVideoOff
+              className={`p-3 rounded-xl font-semibold transition-all ${isVideoOff
                   ? 'bg-red-500/20 border border-red-500/40 text-red-400'
                   : 'bg-white/10 border border-white/10 hover:bg-white/20'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               title={isVideoOff ? 'Turn on video' : 'Turn off video'}
             >
               {isVideoOff ? (
@@ -965,8 +960,8 @@ const StudioPage: React.FC = () => {
               )}
             </button>
 
-            <button 
-              className="p-3 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all" 
+            <button
+              className="p-3 bg-white/10 border border-white/10 rounded-xl hover:bg-white/20 transition-all"
               title="Settings"
             >
               <Settings className="w-4 h-4" />
