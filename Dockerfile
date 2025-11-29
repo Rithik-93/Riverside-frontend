@@ -8,9 +8,9 @@ RUN npm install --prefer-offline --no-audit
 
 COPY . .
 
-ARG VITE_API_URL=http://localhost:8081
-ARG VITE_WS_URL=ws://localhost:8080
-ARG VITE_UPLOAD_URL=http://localhost:8082
+ARG VITE_API_URL
+ARG VITE_WS_URL
+ARG VITE_UPLOAD_URL
 
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
